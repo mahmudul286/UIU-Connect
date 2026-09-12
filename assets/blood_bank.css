@@ -1,0 +1,21 @@
+    .blood-header { background: linear-gradient(135deg, #EF4444 0%, #B91C1C 100%); border-radius: 12px; padding: 30px; color: white; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); }
+    .blood-title { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+    .blood-subtitle { font-size: 15px; opacity: 0.9; }
+    
+    .btn-white { background: #fff; color: #EF4444; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 14px; }
+    .btn-white:hover { background: #FEE2E2; }
+    
+    .req-card { background: #fff; border: 1px solid var(--border-light); border-radius: 12px; padding: 20px; margin-bottom: 20px; position: relative; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+    .req-card.critical { border-left: 4px solid #EF4444; }
+    .req-card.urgent { border-left: 4px solid #F59E0B; }
+    .req-card.normal { border-left: 4px solid #3B82F6; }
+    
+    .req-bg { position: absolute; right: -20px; top: -20px; font-size: 120px; font-weight: 800; color: var(--bg-light); z-index: 0; opacity: 0.5; user-select: none; }
+    .req-content { position: relative; z-index: 1; }
+    
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .badge.critical { background: #FEE2E2; color: #EF4444; }
+    .badge.urgent { background: #FEF3C7; color: #D97706; }
+    .badge.normal { background: #DBEAFE; color: #2563EB; }
+    
+    .filter-select { padding: 8px 12px; border: 1px solid var(--border-light); border-radius: 8px; outline: none; font-size: 14px; background: var(--bg-light); cursor: pointer; }
