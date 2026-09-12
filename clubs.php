@@ -1,12 +1,10 @@
 <?php
-// clubs.php
 require_once 'includes/db_connect.php';
 if (!isset($_SESSION['user_id'])) { header("Location: index.php"); exit(); }
 
 $user_id = $_SESSION['user_id'];
 $current_page = 'clubs.php';
 
-// Handle AJAX Request: Join/Leave Club
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
     header('Content-Type: application/json');
     if ($_POST['ajax_action'] == 'toggle_join') {
@@ -35,7 +33,7 @@ include 'includes/sidebar.php';
 <link rel="stylesheet" href="assets/clubs.css">
 
 <div id="toastMessage" class="toast">
-    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color: #10B981;"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+    <i class="fa-solid fa-check" style="color: #10B981; font-size: 20px;"></i>
     <span id="toastText">Action successful</span>
 </div>
 
@@ -47,7 +45,7 @@ include 'includes/sidebar.php';
                 <h1 class="club-title">Clubs & Societies</h1>
                 <p class="club-subtitle">Connect, collaborate, and grow beyond the classroom.</p>
             </div>
-            <svg width="60" height="60" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="opacity: 0.2;"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+            <i class="fa-solid fa-users" style="opacity: 0.2; font-size: 60px;"></i>
         </div>
 
         <div class="category-filters" id="clubFilters">
@@ -85,7 +83,7 @@ include 'includes/sidebar.php';
                         
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <span style="font-size: 12px; font-weight: 600; color: var(--text-muted); display:flex; align-items:center; gap:4px;">
-                                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                                <i class="fa-solid fa-users" style="font-size: 14px;"></i>
                                 <span id="member-count-<?php echo $c['id']; ?>"><?php echo $c['member_count']; ?></span> Members
                             </span>
                             <button class="join-btn <?php echo $btn_class; ?>" id="join-btn-<?php echo $c['id']; ?>" onclick="toggleJoin(<?php echo $c['id']; ?>)" style="width: 100px;">
@@ -107,7 +105,7 @@ include 'includes/sidebar.php';
         <!-- Upcoming Events Widget -->
         <div class="card" style="margin-bottom: 24px;">
             <h4 style="font-size: 15px; font-weight: 600; color: var(--text-main); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color: var(--uiu-orange);"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg> Upcoming Events
+                <i class="fa-regular fa-calendar" style="color: var(--uiu-orange); font-size: 20px;"></i> Upcoming Events
             </h4>
             
             <div id="eventsList">
@@ -121,7 +119,7 @@ include 'includes/sidebar.php';
                                 <strong style="font-size: 13px; color: var(--text-main); display: block; margin-bottom: 4px;">'.htmlspecialchars($e['title']).'</strong>
                                 <div style="font-size: 11px; color: var(--uiu-orange); font-weight: 600; margin-bottom: 4px;">By '.htmlspecialchars($e['club_name']).'</div>
                                 <div style="font-size: 12px; color: var(--text-muted); display:flex; align-items:center; gap:4px;">
-                                    <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> '.date('M d, g:i A', strtotime($e['event_date'])).'
+                                    <i class="fa-regular fa-clock" style="font-size: 12px;"></i> '.date('M d, g:i A', strtotime($e['event_date'])).'
                                 </div>
                               </div>';
                     }
@@ -135,7 +133,7 @@ include 'includes/sidebar.php';
         <!-- My Clubs-->
         <div class="card">
             <h4 style="font-size: 15px; font-weight: 600; color: var(--text-main); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color: #3B82F6;"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> My Memberships
+                <i class="fa-regular fa-circle-check" style="color: #3B82F6; font-size: 20px;"></i> My Memberships
             </h4>
             <div id="myClubsList" style="display:flex; flex-direction:column; gap:10px;">
                 <?php

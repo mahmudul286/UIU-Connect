@@ -82,7 +82,7 @@ include 'includes/sidebar.php';
 <link rel="stylesheet" href="assets/dashboard.css">
 <link rel="stylesheet" href="assets/counseling.css">
 <div id="toastMessage" class="toast">
-    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color: #10B981;"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+    <i class="fa-solid fa-check" style="color: #10B981; font-size: 20px;"></i>
     <span id="toastText">Action successful</span>
 </div>
 
@@ -96,7 +96,7 @@ include 'includes/sidebar.php';
             </div>
             <?php if($user_role === 'Student'): ?>
             <button class="btn-primary" style="background: #fff; color: #0284C7;" onclick="document.getElementById('bookModal').style.display='flex'">
-                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 5px;"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg> Book Session
+                <i class="fa-regular fa-calendar-plus" style="vertical-align: middle; margin-right: 5px; font-size: 16px;"></i> Book Session
             </button>
             <?php endif; ?>
         </div>
@@ -136,8 +136,8 @@ include 'includes/sidebar.php';
                         
                         <div style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px dashed var(--border-light);">
                             <div style="display: flex; gap: 20px; font-size: 13px; color: var(--text-main); font-weight: 600; margin-bottom: 8px;">
-                                <span style="display:flex; align-items:center; gap:5px; color: #0284C7;"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg> <?php echo date('l, M d, Y', strtotime($row['appointment_date'])); ?></span>
-                                <span style="display:flex; align-items:center; gap:5px; color: #0284C7;"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> <?php echo date('h:i A', strtotime($row['appointment_time'])); ?></span>
+                                <span style="display:flex; align-items:center; gap:5px; color: #0284C7;"><i class="fa-regular fa-calendar" style="font-size: 14px;"></i> <?php echo date('l, M d, Y', strtotime($row['appointment_date'])); ?></span>
+                                <span style="display:flex; align-items:center; gap:5px; color: #0284C7;"><i class="fa-regular fa-clock" style="font-size: 14px;"></i> <?php echo date('h:i A', strtotime($row['appointment_time'])); ?></span>
                             </div>
                             <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5; margin:0;"><strong>Reason:</strong> <?php echo nl2br(htmlspecialchars($row['reason'])); ?></p>
                         </div>
@@ -157,7 +157,7 @@ include 'includes/sidebar.php';
                 }
             } else {
                 echo '<div style="text-align:center; padding: 60px; background: #fff; border-radius: 12px; border: 1px solid var(--border-light); color: var(--text-muted);">
-                        <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin-bottom:15px; opacity:0.3;"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg><br>
+                        <i class="fa-regular fa-calendar-xmark" style="font-size: 48px; margin-bottom:15px; opacity:0.3;"></i><br>
                         No appointments found.
                       </div>';
             }
@@ -168,7 +168,6 @@ include 'includes/sidebar.php';
     <div class="side-column">
         
         <?php if($user_role === 'Faculty'): ?>
-            <!-- FACULTY: Manage Slots -->
             <div class="card" style="margin-bottom: 24px;">
                 <h4 style="font-size: 15px; font-weight: 600; color: var(--text-main); margin-bottom: 15px;">My Counseling Slots</h4>
                 
@@ -205,13 +204,12 @@ include 'includes/sidebar.php';
             </div>
         <?php endif; ?>
 
-        <!-- Faculty Directory -->
         <div class="card">
             <h4 style="font-size: 15px; font-weight: 600; color: var(--text-main); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color: #0284C7;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg> Faculty Directory
+                <i class="fa-solid fa-chalkboard-user" style="color: #0284C7; font-size: 18px;"></i> Faculty Directory
             </h4>
             <div style="position: relative; margin-bottom: 16px;">
-                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 14px;"></i>
                 <input type="text" id="facultySearch" class="poll-input" style="margin-bottom: 0; padding-left: 36px;" placeholder="Search faculty name..." onkeyup="searchFaculty(this.value)">
             </div>
             
@@ -238,13 +236,12 @@ include 'includes/sidebar.php';
     </div>
 </main>
 
-<!-- Book Appointment -->
 <div class="modal-overlay" id="bookModal">
     <div class="modal-content" style="max-width: 500px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid var(--border-light); padding-bottom:12px;">
             <h3 style="font-size:18px; color: var(--text-main);">Book Counseling Session</h3>
             <button style="background:none; border:none; cursor:pointer; color:var(--text-muted);" onclick="document.getElementById('bookModal').style.display='none'">
-                <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
+                <i class="fa-solid fa-xmark" style="font-size: 20px;"></i>
             </button>
         </div>
 

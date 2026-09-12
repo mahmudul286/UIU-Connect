@@ -19,7 +19,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
                 $new_id = $conn->insert_id;
                 $html = '<span class="skill-tag" id="skill-'.$new_id.'">
                             '.htmlspecialchars($skill).'
-                            <button onclick="removeSkill('.$new_id.')"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                            <button onclick="removeSkill('.$new_id.')"><i class="fa-solid fa-xmark" style="font-size: 12px;"></i></button>
                          </span>';
                 echo json_encode(['status' => 'success', 'html' => $html]); exit();
             }
@@ -98,7 +98,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
             }
         } else {
             $html = '<div style="padding:20px; text-align:center; color:var(--text-muted); font-size:13px;">
-                        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="margin-bottom:8px; opacity:0.5;"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        <i class="fa-solid fa-user-slash" style="margin-bottom:8px; opacity:0.5; font-size: 24px;"></i>
                         <br>No students or projects found with "'.$query.'"
                      </div>';
         }
@@ -154,7 +154,7 @@ include 'includes/sidebar.php';
 <link rel="stylesheet" href="assets/skills.css">
 
 <div id="toastMessage" class="toast">
-    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color: #10B981;"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+    <i class="fa-solid fa-check" style="color: #10B981; font-size: 20px;"></i>
     <span id="toastText">Action successful</span>
 </div>
 
@@ -164,13 +164,13 @@ include 'includes/sidebar.php';
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding: 20px; background: #fff; border-radius: 12px; border: 1px solid var(--border-light); box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
             <div>
                 <h2 style="font-size: 20px; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
-                    <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color: var(--uiu-orange);"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                    <i class="fa-solid fa-laptop-code" style="color: var(--uiu-orange); font-size: 24px;"></i>
                     Project Showcase
                 </h2>
                 <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Discover and get inspired by projects built by UIU students.</p>
             </div>
             <button class="btn-primary" onclick="document.getElementById('projectModal').style.display='flex'">
-                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 4px;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path></svg> Add Project
+                <i class="fa-solid fa-plus" style="vertical-align: middle; margin-right: 4px; font-size: 16px;"></i> Add Project
             </button>
         </div>
 
@@ -188,7 +188,7 @@ include 'includes/sidebar.php';
                     <?php if($row['image_path']): ?>
                         <div class="project-img"><img src="<?php echo htmlspecialchars($row['image_path']); ?>" alt="Project Image" loading="lazy"></div>
                     <?php else: ?>
-                        <div class="project-img"><svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24" style="color: var(--text-muted); opacity: 0.3;"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg></div>
+                        <div class="project-img"><i class="fa-solid fa-display" style="color: var(--text-muted); opacity: 0.3; font-size: 48px;"></i></div>
                     <?php endif; ?>
                     
                     <div class="project-body">
@@ -211,7 +211,7 @@ include 'includes/sidebar.php';
                                 <?php if($row['user_id'] == $user_id): ?>
                                 <div style="position: relative;">
                                     <button style="background:none; border:none; color:var(--text-muted); cursor:pointer;" onclick="toggleProjMenu('proj-menu-<?php echo $proj_id; ?>')">
-                                        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path></svg>
+                                        <i class="fa-solid fa-ellipsis-vertical" style="font-size: 20px;"></i>
                                     </button>
                                     <div id="proj-menu-<?php echo $proj_id; ?>" class="post-options-menu" onmouseleave="this.style.display='none'">
                                         <button onclick="openEditProj(<?php echo $proj_id; ?>, '<?php echo addslashes($row['title']); ?>', '<?php echo addslashes($row['tech_stack']); ?>', '<?php echo addslashes(str_replace(["\r", "\n"], ["", "\\n"], $row['description'])); ?>', '<?php echo addslashes($row['repo_url']); ?>', '<?php echo addslashes($row['live_url']); ?>')">Edit</button>
@@ -233,17 +233,17 @@ include 'includes/sidebar.php';
                         <div class="project-links">
                             <?php if(!empty($row['repo_url'])): ?>
                                 <a href="<?php echo htmlspecialchars($row['repo_url']); ?>" target="_blank" class="link-github">
-                                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.379.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.161 22 16.418 22 12c0-5.523-4.477-10-10-10z"></path></svg> Repository
+                                    <i class="fa-brands fa-github" style="font-size: 16px;"></i> Repository
                                 </a>
                             <?php endif; ?>
                             <?php if(!empty($row['live_url'])): ?>
                                 <a href="<?php echo htmlspecialchars($row['live_url']); ?>" target="_blank" class="link-live">
-                                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg> Live Demo
+                                    <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 16px;"></i> Live Demo
                                 </a>
                             <?php endif; ?>
                             
                             <button class="proj-like-btn <?php echo $is_liked ? 'active' : ''; ?>" onclick="toggleProjectLike(<?php echo $proj_id; ?>, this)">
-                                <svg width="20" height="20" fill="<?php echo $is_liked ? 'currentColor' : 'none'; ?>" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg> 
+                                <i class="<?php echo $is_liked ? 'fa-solid' : 'fa-regular'; ?> fa-heart" style="font-size: 20px;"></i> 
                                 <span id="proj-like-count-<?php echo $proj_id; ?>"><?php echo $like_count; ?></span>
                             </button>
                         </div>
@@ -261,7 +261,7 @@ include 'includes/sidebar.php';
         
         <div class="card" style="margin-bottom: 24px;">
             <h4 style="font-size: 15px; font-weight: 600; color: var(--text-main); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color: var(--uiu-orange);"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> My Skill Set
+                <i class="fa-solid fa-bolt" style="color: var(--uiu-orange); font-size: 20px;"></i> My Skill Set
             </h4>
             
             <div id="mySkillsList" style="margin-bottom: 20px;">
@@ -272,7 +272,7 @@ include 'includes/sidebar.php';
                     while($s = $s_res->fetch_assoc()) {
                         echo '<span class="skill-tag" id="skill-'.$s['id'].'">
                                 '.htmlspecialchars($s['skill_name']).'
-                                <button onclick="removeSkill('.$s['id'].')"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                                <button onclick="removeSkill('.$s['id'].')"><i class="fa-solid fa-xmark" style="font-size: 12px;"></i></button>
                               </span>';
                     }
                 } else {
@@ -299,10 +299,10 @@ include 'includes/sidebar.php';
 
         <div class="card">
             <h4 style="font-size: 15px; font-weight: 600; color: var(--text-main); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color: #3B82F6;"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg> Find Collaborators
+                <i class="fa-solid fa-users-viewfinder" style="color: #3B82F6; font-size: 20px;"></i> Find Collaborators
             </h4>
             <div style="position: relative; margin-bottom: 16px;">
-                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 14px;"></i>
                 <input type="text" id="collabSearch" class="poll-input" style="margin-bottom: 0; padding-left: 36px;" placeholder="Search by skill (e.g. PHP)" onkeyup="searchTeammates(this.value)">
             </div>
             <div id="collabResults">
@@ -319,13 +319,13 @@ include 'includes/sidebar.php';
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid var(--border-light); padding-bottom:12px;">
             <h3 style="font-size:18px; color: var(--text-main);">Upload Project</h3>
             <button style="background:none; border:none; cursor:pointer; color:var(--text-muted);" onclick="document.getElementById('projectModal').style.display='none'">
-                <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
+                <i class="fa-solid fa-xmark" style="font-size: 24px;"></i>
             </button>
         </div>
         <form method="POST" enctype="multipart/form-data">
             
             <div style="border: 2px dashed var(--border-light); border-radius: 8px; padding: 25px; text-align: center; cursor: pointer; margin-bottom: 15px; background: var(--bg-light); transition: 0.2s;" onclick="document.getElementById('projImage').click()" id="uploadBox">
-                <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="color: var(--text-muted); margin-bottom: 8px;"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                <i class="fa-solid fa-cloud-arrow-up" style="color: var(--text-muted); margin-bottom: 8px; font-size: 32px;"></i>
                 <p style="font-size: 13px; color: var(--text-main); font-weight: 600;" id="uploadText">Upload Project Thumbnail</p>
                 <p style="font-size: 12px; color: var(--text-muted);">Recommended: 1200x800px (JPG/PNG)</p>
                 <input type="file" name="project_image" id="projImage" accept="image/*" style="display:none;" onchange="showProjectFileName(this)" required>
@@ -366,7 +366,7 @@ include 'includes/sidebar.php';
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid var(--border-light); padding-bottom:12px;">
             <h3 style="font-size:18px; color: var(--text-main);">Edit Project</h3>
             <button style="background:none; border:none; cursor:pointer; color:var(--text-muted);" onclick="document.getElementById('editProjModal').style.display='none'">
-                <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
+                <i class="fa-solid fa-xmark" style="font-size: 24px;"></i>
             </button>
         </div>
         <form method="POST">
@@ -470,7 +470,16 @@ include 'includes/sidebar.php';
         fetch('skills.php', { method: 'POST', body: fd }).then(r=>r.json()).then(data => {
             if(data.status === 'success') {
                 data.is_liked ? btn.classList.add('active') : btn.classList.remove('active');
-                btn.querySelector('svg').setAttribute('fill', data.is_liked ? 'currentColor' : 'none');
+                
+                let icon = btn.querySelector('i');
+                if (data.is_liked) {
+                    icon.classList.remove('fa-regular');
+                    icon.classList.add('fa-solid');
+                } else {
+                    icon.classList.remove('fa-solid');
+                    icon.classList.add('fa-regular');
+                }
+                
                 document.getElementById('proj-like-count-' + projId).innerText = data.count;
             }
         });
@@ -486,7 +495,7 @@ include 'includes/sidebar.php';
         }
         
         collabTimeout = setTimeout(() => {
-            resultsBox.innerHTML = '<div style="text-align:center; padding:20px;"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--uiu-orange); animation:pulse 1s infinite;"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg></div>';
+            resultsBox.innerHTML = '<div style="text-align:center; padding:20px;"><i class="fa-solid fa-spinner fa-spin" style="color:var(--uiu-orange); font-size: 24px;"></i></div>';
             let fd = new FormData();
             fd.append('ajax_action', 'search_collaborator');
             fd.append('query', query);

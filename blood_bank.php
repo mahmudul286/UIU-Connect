@@ -1,12 +1,10 @@
 <?php
-// blood_bank.php
 require_once 'includes/db_connect.php';
 if (!isset($_SESSION['user_id'])) { header("Location: index.php"); exit(); }
 
 $user_id = $_SESSION['user_id'];
 $current_page = 'blood_bank.php';
 
-// Handle AJAX Request: Filter Donors
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
     header('Content-Type: application/json');
     
@@ -43,7 +41,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
         echo json_encode(['html' => $html]); exit();
     }
     
-    // Mark Request as Fulfilled
     if ($_POST['ajax_action'] == 'fulfill_request') {
         $req_id = intval($_POST['request_id']);
         $conn->query("UPDATE blood_requests SET status = 'fulfilled' WHERE id = $req_id AND requester_id = $user_id");
@@ -51,7 +48,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
     }
 }
 
-// Handle Form: Request Blood
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['request_blood'])) {
     $patient = $conn->real_escape_string($_POST['patient_name']);
     $bg = $conn->real_escape_string($_POST['blood_group']);
@@ -67,7 +63,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['request_blood'])) {
     header("Location: blood_bank.php"); exit();
 }
 
-// Handle Form: Register as Donor
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['register_donor'])) {
     $bg = $conn->real_escape_string($_POST['donor_bg']);
     $last_date = !empty($_POST['last_donation']) ? $conn->real_escape_string($_POST['last_donation']) : NULL;
@@ -82,7 +77,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['register_donor'])) {
     header("Location: blood_bank.php"); exit();
 }
 
-// Check if user is already a donor
 $is_donor = false;
 $donor_check = $conn->query("SELECT * FROM blood_donors WHERE user_id = $user_id");
 if ($donor_check->num_rows > 0) { $is_donor = true; $my_donor_info = $donor_check->fetch_assoc(); }
@@ -106,7 +100,7 @@ include 'includes/sidebar.php';
             </div>
             <div style="display: flex; gap: 10px;">
                 <button class="btn-white" onclick="document.getElementById('requestModal').style.display='flex'">
-                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 4px;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg> Request Blood
+                    <i class="fa-solid fa-hand-holding-droplet" style="vertical-align: middle; margin-right: 4px; font-size: 16px;"></i> Request Blood
                 </button>
             </div>
         </div>
@@ -136,16 +130,16 @@ include 'includes/sidebar.php';
                         
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; font-size: 14px; color: var(--text-main); margin-bottom: 15px;">
                             <div style="display:flex; align-items:center; gap:8px;">
-                                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--text-muted);"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg> Patient: <strong><?php echo htmlspecialchars($req['patient_name']); ?></strong>
+                                <i class="fa-regular fa-user" style="color:var(--text-muted); font-size: 16px;"></i> Patient: <strong><?php echo htmlspecialchars($req['patient_name']); ?></strong>
                             </div>
                             <div style="display:flex; align-items:center; gap:8px;">
-                                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--text-muted);"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg> Hospital: <strong><?php echo htmlspecialchars($req['hospital_name']); ?></strong>
+                                <i class="fa-regular fa-hospital" style="color:var(--text-muted); font-size: 16px;"></i> Hospital: <strong><?php echo htmlspecialchars($req['hospital_name']); ?></strong>
                             </div>
                             <div style="display:flex; align-items:center; gap:8px;">
-                                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--text-muted);"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg> Needed By: <strong style="color: #EF4444;"><?php echo date('d M, Y', strtotime($req['needed_date'])); ?></strong>
+                                <i class="fa-regular fa-calendar" style="color:var(--text-muted); font-size: 16px;"></i> Needed By: <strong style="color: #EF4444;"><?php echo date('d M, Y', strtotime($req['needed_date'])); ?></strong>
                             </div>
                             <div style="display:flex; align-items:center; gap:8px;">
-                                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--text-muted);"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg> Contact: <strong><?php echo htmlspecialchars($req['contact_number']); ?></strong>
+                                <i class="fa-solid fa-phone" style="color:var(--text-muted); font-size: 14px;"></i> Contact: <strong><?php echo htmlspecialchars($req['contact_number']); ?></strong>
                             </div>
                         </div>
                         <div style="font-size: 12px; color: var(--text-muted); border-top: 1px dashed var(--border-light); padding-top: 12px; display: flex; justify-content: space-between;">
@@ -167,7 +161,7 @@ include 'includes/sidebar.php';
         <!-- Donor Registration Card -->
         <div class="card" style="margin-bottom: 24px; text-align: center; padding: 30px 20px;">
             <div style="width: 60px; height: 60px; background: #FEE2E2; color: #EF4444; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px auto;">
-                <svg width="32" height="32" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"></path></svg>
+                <i class="fa-solid fa-droplet" style="font-size: 28px;"></i>
             </div>
             <?php if($is_donor): ?>
                 <h4 style="font-size: 16px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">You are a Registered Donor!</h4>
@@ -207,8 +201,8 @@ include 'includes/sidebar.php';
 <div class="modal-overlay" id="requestModal">
     <div class="modal-content">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid var(--border-light); padding-bottom:12px;">
-            <h3 style="font-size:18px; color: var(--text-main); display: flex; align-items: center; gap: 8px;"><svg width="20" height="20" fill="currentColor" style="color:#EF4444;" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"></path></svg> Emergency Request</h3>
-            <button style="background:none; border:none; cursor:pointer; color:var(--text-muted);" onclick="document.getElementById('requestModal').style.display='none'"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            <h3 style="font-size:18px; color: var(--text-main); display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-droplet" style="color:#EF4444; font-size: 18px;"></i> Emergency Request</h3>
+            <button style="background:none; border:none; cursor:pointer; color:var(--text-muted);" onclick="document.getElementById('requestModal').style.display='none'"><i class="fa-solid fa-xmark" style="font-size: 20px;"></i></button>
         </div>
         <form method="POST">
             <input type="hidden" name="request_blood" value="1">
@@ -267,7 +261,7 @@ include 'includes/sidebar.php';
     <div class="modal-content" style="max-width: 400px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid var(--border-light); padding-bottom:12px;">
             <h3 style="font-size:18px; color: var(--text-main);">Donor Registration</h3>
-            <button style="background:none; border:none; cursor:pointer; color:var(--text-muted);" onclick="document.getElementById('donorModal').style.display='none'"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            <button style="background:none; border:none; cursor:pointer; color:var(--text-muted);" onclick="document.getElementById('donorModal').style.display='none'"><i class="fa-solid fa-xmark" style="font-size: 20px;"></i></button>
         </div>
         <form method="POST">
             <input type="hidden" name="register_donor" value="1">

@@ -145,22 +145,22 @@ include 'includes/sidebar.php';
 
                 switch ($row['type']) {
                     case 'like':
-                        $icon_html = '<div class="notif-badge badge-like"><svg width="10" height="10" fill="currentColor" viewBox="0 0 20 20"><path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z"></path></svg></div>';
+                        $icon_html = '<div class="notif-badge badge-like"><i class="fa-solid fa-thumbs-up" style="font-size: 10px;"></i></div>';
                         $message = "<strong>" . htmlspecialchars($row['full_name']) . "</strong> liked your post.";
                         $link = "dashboard.php#post-card-" . $row['reference_id'];
                         break;
                     case 'comment':
-                        $icon_html = '<div class="notif-badge badge-comment"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg></div>';
+                        $icon_html = '<div class="notif-badge badge-comment"><i class="fa-solid fa-comment" style="font-size: 10px;"></i></div>';
                         $message = "<strong>" . htmlspecialchars($row['full_name']) . "</strong> commented on a post.";
                         $link = "dashboard.php#post-card-" . $row['reference_id'];
                         break;
                     case 'connection':
-                        $icon_html = '<div class="notif-badge badge-connection"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path></svg></div>';
+                        $icon_html = '<div class="notif-badge badge-connection"><i class="fa-solid fa-user-plus" style="font-size: 10px;"></i></div>';
                         $message = "<strong>" . htmlspecialchars($row['full_name']) . "</strong> sent you a connection request.";
                         $link = "profile.php?id=" . $row['sender_id'];
                         break;
                     default:
-                        $icon_html = '<div class="notif-badge badge-announcement"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"></path></svg></div>';
+                        $icon_html = '<div class="notif-badge badge-announcement"><i class="fa-solid fa-bullhorn" style="font-size: 10px;"></i></div>';
                         $message = "New Campus Announcement by <strong>" . htmlspecialchars($row['full_name']) . "</strong>.";
                         $link = "dashboard.php";
                         break;
@@ -185,7 +185,7 @@ include 'includes/sidebar.php';
             }
         } else {
             echo '<div style="text-align:center; padding: 60px; background: #fff; border-radius: 12px; border: 1px solid var(--border-light); color: var(--text-muted);">
-                    <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24" style="margin-bottom:15px; opacity:0.5;"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                    <i class="fa-regular fa-bell-slash" style="font-size: 48px; margin-bottom: 15px; opacity: 0.5;"></i>
                     <p>No notifications yet. You are all caught up!</p>
                   </div>';
         }
