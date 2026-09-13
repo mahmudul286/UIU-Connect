@@ -26,7 +26,7 @@ $total_msg_badge = $unread_msgs + $pending_reqs;
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         .badge-count { position: absolute; top: -8px; right: -8px; background: #EF4444; color: white; font-size: 10px; font-weight: 700; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 2px solid #fff; z-index: 10; }
-        .fa-sistrix { width: 18px; height: 18px; color: var(--text-muted); position: absolute; left: 15px; top: 50%; transform: translateY(-50%); }
+        .fa-magnifying-glass { width: 18px; height: 18px; color: var(--text-muted); position: absolute; left: 15px; top: 50%; transform: translateY(-50%); }
         
         .fa-shake { animation-duration: 2.5s; }
     </style>
@@ -41,7 +41,7 @@ $total_msg_badge = $unread_msgs + $pending_reqs;
     
     <!-- LIVE SEARCH BAR -->
     <div class="search-bar" style="position: relative;">
-        <i class="fa-brands fa-sistrix"></i>
+        <i class="fa-solid fa-magnifying-glass"></i>
         <input type="text" id="topSearchInput" placeholder="Search users, posts, marketplace..." style="padding-left: 40px; width: 350px;" onkeyup="handleLiveSearch(this.value)">
         <div id="searchResults" style="display: none; position: absolute; top: 110%; left: 0; width: 100%; background: #fff; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid var(--border-light); border-radius: 8px; z-index: 1000; max-height: 400px; overflow-y: auto;"></div>
     </div>

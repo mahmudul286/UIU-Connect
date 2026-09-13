@@ -17,7 +17,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
     header('Content-Type: application/json');
     $action = $_POST['ajax_action'];
 
-    // 1. LIVE SEARCH
+    // 1. REPORT POST
+    if ($action == 'report_post') {
+        $post_id = intval($_POST['post_id']);
+        $conn->query("INSERT IGNORE INTO post_reports (post_id, user_id) VALUES ($post_id, $user_id)");
+        echo json_encode(['status' => 'success']); exit();
+    }
+
+    // 2. LIVE SEARCH
     if ($action == 'live_search') {
         $query = $conn->real_escape_string($_POST['query']);
         $html = '';
@@ -42,7 +49,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
         }
 
         // Search Posts
-        $sql_posts = "SELECT p.id, p.content, u.full_name FROM posts p JOIN users u ON p.user_id = u.id WHERE p.content LIKE '%$query%' ORDER BY p.created_at DESC LIMIT 4";
+        $sql_posts = "SELECT p.id, p.content, u.full_name FROM posts p JOIN users u ON p.user_id = u.id WHERE p.content LIKE '%$query%' AND p.privacy = 'Public' ORDER BY p.created_at DESC LIMIT 4";
         $res_posts = $conn->query($sql_posts);
         if($res_posts->num_rows > 0) {
             $html .= '<div style="padding: 10px 15px; font-size: 11px; font-weight: 700; color: var(--text-muted); background: var(--bg-light); border-bottom: 1px solid var(--border-light); border-top: 1px solid var(--border-light); text-transform: uppercase;">Posts</div>';
@@ -83,7 +90,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
         echo json_encode(['html' => $html]); exit();
     }
     
-    // 2. POST LIKE
+    // 3. POST LIKE
     if ($action == 'toggle_like') {
         $post_id = intval($_POST['post_id']);
         $check = $conn->query("SELECT id FROM likes WHERE user_id = $user_id AND post_id = $post_id");
@@ -92,13 +99,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
             $is_liked = false;
         } else {
             $conn->query("INSERT INTO likes (user_id, post_id) VALUES ($user_id, $post_id)");
+            $owner_res = $conn->query("SELECT user_id FROM posts WHERE id = $post_id");
+            if($owner_res->num_rows > 0) {
+                $owner_id = $owner_res->fetch_assoc()['user_id'];
+                if($owner_id != $user_id) {
+                    $conn->query("INSERT INTO notifications (user_id, sender_id, type, reference_id) VALUES ($owner_id, $user_id, 'like', $post_id)");
+                }
+            }
             $is_liked = true;
         }
         $count = $conn->query("SELECT COUNT(id) as total FROM likes WHERE post_id = $post_id")->fetch_assoc()['total'];
         echo json_encode(['status' => 'success', 'is_liked' => $is_liked, 'count' => $count]); exit();
     }
 
-    // 3. COMMENT LIKE
+    // 4. COMMENT LIKE
     if ($action == 'toggle_comment_like') {
         $comment_id = intval($_POST['comment_id']);
         $check = $conn->query("SELECT id FROM comment_likes WHERE user_id = $user_id AND comment_id = $comment_id");
@@ -113,7 +127,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
         echo json_encode(['status' => 'success', 'is_liked' => $is_liked, 'count' => $count]); exit();
     }
     
-    // 4. COMMENT / REPLY
+    // 5. COMMENT / REPLY
     if ($action == 'add_comment') {
         $post_id = intval($_POST['post_id']);
         $text = $conn->real_escape_string($_POST['comment_text']);
@@ -127,12 +141,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
         
         $conn->query("INSERT INTO comments (post_id, user_id, comment_text, parent_id) VALUES ($post_id, $user_id, '$text', $resolved_parent_id)");
         $new_comment_id = $conn->insert_id;
-        $total_comments = $conn->query("SELECT COUNT(id) as c FROM comments WHERE post_id = $post_id")->fetch_assoc()['c'];
         
+        $owner_res = $conn->query("SELECT user_id FROM posts WHERE id = $post_id");
+        if($owner_res->num_rows > 0) {
+            $owner_id = $owner_res->fetch_assoc()['user_id'];
+            if($owner_id != $user_id) {
+                $conn->query("INSERT INTO notifications (user_id, sender_id, type, reference_id) VALUES ($owner_id, $user_id, 'comment', $post_id)");
+            }
+        }
+
+        $total_comments = $conn->query("SELECT COUNT(id) as c FROM comments WHERE post_id = $post_id")->fetch_assoc()['c'];
         $margin_style = ($resolved_parent_id !== 'NULL') ? 'margin-left: 48px; margin-top: 8px;' : 'margin-bottom: 12px;';
         $avatar_size = ($resolved_parent_id !== 'NULL') ? '24px' : '32px';
         $font_size = ($resolved_parent_id !== 'NULL') ? '10px' : '12px';
-        
         $avatar_html = $current_profile_pic ? '<img src="'.htmlspecialchars($current_profile_pic).'" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">' : $current_initials;
 
         $html = '
@@ -154,7 +175,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
         echo json_encode(['status' => 'success', 'html' => $html, 'total_comments' => $total_comments, 'resolved_parent_id' => $resolved_parent_id]); exit();
     }
 
-    // 5. POLL VOTE
+    // 6. POLL VOTE
     if ($action == 'vote_poll') {
         $post_id = intval($_POST['post_id']);
         $option_index = intval($_POST['option_index']);
@@ -170,7 +191,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
         echo json_encode(['status' => 'success', 'results' => $results, 'total' => $total]); exit();
     }
 
-    // 6. SAVE
+    // 7. SAVE
     if ($action == 'toggle_save') {
         $post_id = intval($_POST['post_id']);
         $check = $conn->query("SELECT id FROM saved_posts WHERE user_id = $user_id AND post_id = $post_id");
@@ -183,7 +204,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
         } exit();
     }
 
-    // 7. DELETE POST
+    // 8. DELETE POST
     if ($action == 'delete_post') {
         $post_id = intval($_POST['post_id']);
         $check = $conn->query("SELECT id FROM posts WHERE id = $post_id AND user_id = $user_id");
@@ -194,20 +215,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
         exit();
     }
 
-    // 8. EDIT POST
+    // 9. EDIT POST (With Privacy Update)
     if ($action == 'edit_post') {
         $post_id = intval($_POST['post_id']);
         $new_content = $conn->real_escape_string($_POST['content']);
+        $new_privacy = $conn->real_escape_string($_POST['privacy'] ?? 'Public');
         $old = $conn->query("SELECT content FROM posts WHERE id = $post_id AND user_id = $user_id")->fetch_assoc();
         if($old){
             $old_content = $conn->real_escape_string($old['content']);
             $conn->query("INSERT INTO post_edit_history (post_id, old_content) VALUES ($post_id, '$old_content')");
-            $conn->query("UPDATE posts SET content = '$new_content', is_edited = 1 WHERE id = $post_id");
+            $conn->query("UPDATE posts SET content = '$new_content', privacy = '$new_privacy', is_edited = 1 WHERE id = $post_id");
             echo json_encode(['status' => 'success', 'new_content' => htmlspecialchars($_POST['content'])]);
         } exit();
     }
 
-    // 9.EDIT HISTORY
+    // 10.EDIT HISTORY
     if ($action == 'get_edit_history') {
         $post_id = intval($_POST['post_id']);
         $history = $conn->query("SELECT old_content, edited_at FROM post_edit_history WHERE post_id = $post_id ORDER BY edited_at DESC");
@@ -222,7 +244,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
         echo json_encode(['status' => 'success', 'html' => $html]); exit();
     }
 
-    // 10. SHARE POST
+    // 11. SHARE POST
     if ($action == 'share_post') {
         $post_id = intval($_POST['post_id']);
         $share_text = $conn->real_escape_string($_POST['share_text']);
@@ -235,6 +257,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['post_content']) && !isset($_POST['ajax_action'])) {
     $content = $conn->real_escape_string($_POST['post_content']);
     $post_type = (isset($_POST['is_announcement']) && $user_role === 'Admin') ? 'Announcement' : 'General';
+    $privacy = $conn->real_escape_string($_POST['post_privacy'] ?? 'Public');
     $media_path = NULL; $media_type = NULL; $poll_data = NULL;
 
     if (isset($_FILES['media_upload']) && $_FILES['media_upload']['error'] == 0) {
@@ -258,9 +281,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['post_content']) && !is
         if(count($poll_array) > 0) $poll_data = json_encode($poll_array);
     }
 
-    $stmt = $conn->prepare("INSERT INTO posts (user_id, post_type, content, media_path, media_type, poll_data) VALUES (?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("isssss", $user_id, $post_type, $content, $media_path, $media_type, $poll_data);
+    $stmt = $conn->prepare("INSERT INTO posts (user_id, post_type, content, media_path, media_type, poll_data, privacy) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("issssss", $user_id, $post_type, $content, $media_path, $media_type, $poll_data, $privacy);
     $stmt->execute();
+    
+    if ($post_type === 'Announcement') {
+        $all_users = $conn->query("SELECT id FROM users WHERE id != $user_id");
+        while($u = $all_users->fetch_assoc()) {
+            $u_id = $u['id'];
+            $conn->query("INSERT INTO notifications (user_id, sender_id, type) VALUES ($u_id, $user_id, 'announcement')");
+        }
+    }
     header("Location: dashboard.php"); exit();
 }
 
@@ -286,10 +317,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ocr_sync_complete'])) 
     header("Location: dashboard.php"); exit();
 }
 
-$is_setup_complete = true;
-if ($user_role === 'Student' && !isset($_SESSION['setup_bypassed'])) {
+$has_enrollments = true;
+$show_setup_popup = false;
+
+if ($user_role === 'Student') {
     $check_setup = $conn->query("SELECT id FROM enrollments WHERE student_id = $user_id LIMIT 1");
-    if ($check_setup && $check_setup->num_rows === 0) { $is_setup_complete = false; }
+    if ($check_setup && $check_setup->num_rows === 0) { 
+        $has_enrollments = false; 
+        if (!isset($_SESSION['setup_bypassed'])) {
+            $show_setup_popup = true;
+        }
+    }
 }
 
 include 'includes/header.php';
@@ -303,8 +341,8 @@ include 'includes/sidebar.php';
     <span id="toastText">Action successful</span>
 </div>
 
-<?php if (!$is_setup_complete): ?>
-<div class="modal-overlay" id="setupModal" style="display: flex;">
+<?php if (!$has_enrollments): ?>
+<div class="modal-overlay" id="setupModal" style="display: <?php echo $show_setup_popup ? 'flex' : 'none'; ?>;">
     <div class="modal-content" id="modalStep1" style="text-align: center;">
         <h2 style="font-size: 24px; color: var(--text-main); margin-bottom: 10px; display:flex; align-items:center; justify-content: center; gap:8px;">
             <i class="fa-solid fa-bolt" style="color:var(--uiu-orange); font-size: 24px;"></i>
@@ -339,6 +377,22 @@ include 'includes/sidebar.php';
 <main class="dashboard-layout">
     
     <div class="feed-column">
+        
+        <?php if (!$has_enrollments): ?>
+        <div class="card" style="margin-bottom: 24px; padding: 15px 20px; background: linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%); border: 1px solid #FDBA74; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 40px; height: 40px; background: #fff; color: var(--uiu-orange); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 2px 4px rgba(242,101,34,0.1);">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <div>
+                    <strong style="color: #9A3412; font-size: 14px; display: block;">Action Required: Sync Routine</strong>
+                    <span style="color: #C2410C; font-size: 13px;">You haven't synced your classes yet. My Classes and Tasks are hidden.</span>
+                </div>
+            </div>
+            <button class="btn-primary" style="padding: 8px 16px; font-size: 13px;" onclick="document.getElementById('setupModal').style.display='flex'">Sync Now</button>
+        </div>
+        <?php endif; ?>
+
         <div class="card" style="margin-bottom: 24px; padding: 20px; border-radius: 12px;">
             <form method="POST" action="dashboard.php" enctype="multipart/form-data">
                 <div style="display: flex; gap: 12px; margin-bottom: 12px;">
@@ -390,13 +444,35 @@ include 'includes/sidebar.php';
                         </label>
                         <?php endif; ?>
                     </div>
-                    <button type="submit" class="btn-primary" style="padding: 8px 24px;">Post</button>
+                    <div style="display: flex; align-items: center;">
+                        <div style="display: flex; align-items: center; background: #f8fafc; padding: 6px 10px; border: 1px solid var(--border-light); border-radius: 6px; margin-right: 10px;">
+                            <i class="fa-solid fa-lock" style="color: var(--text-muted); font-size: 12px; margin-right: 6px;"></i>
+                            <select name="post_privacy" style="border: none; background: transparent; color: var(--text-main); font-size: 13px; font-weight: 500; cursor: pointer; outline: none;">
+                                <option value="Public">Public</option>
+                                <option value="Connections">Connections</option>
+                                <option value="Only Me">Only Me</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn-primary" style="padding: 8px 24px;">Post</button>
+                    </div>
                 </div>
             </form>
         </div>
 
         <?php
-        $sql = "SELECT p.*, u.full_name, u.role, u.department, u.profile_pic FROM posts p JOIN users u ON p.user_id = u.id ORDER BY p.created_at DESC";
+        // Filter out private posts from others
+        $sql = "SELECT p.*, u.full_name, u.role, u.department, u.profile_pic 
+                FROM posts p 
+                JOIN users u ON p.user_id = u.id 
+                WHERE p.privacy = 'Public' 
+                   OR p.user_id = $user_id 
+                   OR (p.privacy = 'Connections' AND EXISTS (
+                       SELECT 1 FROM connections c 
+                       WHERE c.status = 'accepted' 
+                       AND ((c.sender_id = $user_id AND c.receiver_id = p.user_id) 
+                         OR (c.sender_id = p.user_id AND c.receiver_id = $user_id))
+                   ))
+                ORDER BY p.created_at DESC";
         $result = $conn->query($sql);
 
         if ($result && $result->num_rows > 0) {
@@ -424,6 +500,8 @@ include 'includes/sidebar.php';
                                     <?php echo htmlspecialchars($row['role']) . " • " . htmlspecialchars($row['department']); ?>
                                     <span style="margin: 0 4px;">·</span> <?php echo date('M d, h:i A', strtotime($row['created_at'])); ?>
                                     
+                                    <i class="fa-solid <?php echo $row['privacy'] === 'Public' ? 'fa-globe' : ($row['privacy'] === 'Connections' ? 'fa-user-group' : 'fa-lock'); ?>" style="margin-left: 5px; font-size: 10px;" title="<?php echo $row['privacy']; ?>"></i>
+                                    
                                     <?php if($row['is_edited']): ?>
                                         <span style="margin-left: 5px; cursor: pointer; text-decoration: underline;" onclick="viewEditHistory(<?php echo $post_id; ?>)">(Edited)</span>
                                     <?php endif; ?>
@@ -437,17 +515,19 @@ include 'includes/sidebar.php';
                             </div>
                         </div>
                         
-                        <?php if($row['user_id'] == $user_id): ?>
                         <div style="position: relative;">
                             <button style="background:none; border:none; color:var(--text-muted); cursor:pointer;" onclick="toggleMenu('post-menu-<?php echo $post_id; ?>')">
                                 <i class="fa-solid fa-ellipsis" style="font-size: 24px;"></i>
                             </button>
                             <div id="post-menu-<?php echo $post_id; ?>" class="post-options-menu" onmouseleave="this.style.display='none'">
-                                <button onclick="openEditPost(<?php echo $post_id; ?>)">Edit Post</button>
-                                <button style="color:#EF4444;" onclick="openDeleteModal(<?php echo $post_id; ?>)">Delete Post</button>
+                                <?php if($row['user_id'] == $user_id): ?>
+                                    <button onclick="openEditPost(<?php echo $post_id; ?>, '<?php echo $row['privacy']; ?>')"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+                                    <button style="color:#EF4444;" onclick="openDeleteModal(<?php echo $post_id; ?>)"><i class="fa-solid fa-trash"></i> Delete</button>
+                                <?php else: ?>
+                                    <button style="color:#F59E0B;" onclick="reportPost(<?php echo $post_id; ?>)"><i class="fa-solid fa-flag"></i> Report</button>
+                                <?php endif; ?>
                             </div>
                         </div>
-                        <?php endif; ?>
                     </div>
 
                     <p id="post-content-<?php echo $post_id; ?>" class="post-content-text" data-raw="<?php echo htmlspecialchars($row['content']); ?>"><?php echo htmlspecialchars($row['content']); ?></p>
@@ -645,8 +725,7 @@ include 'includes/sidebar.php';
             <h4 style="font-size: 15px; font-weight: 600; color: var(--text-main); margin-bottom: 16px;">My Classes</h4>
             <div style="padding-left: 10px; border-left: 2px solid var(--border-light);">
                 <?php
-                if ($user_role === 'Student' && $is_setup_complete) {
-                    // TODAY
+                if ($user_role === 'Student' && $has_enrollments) {
                     $routine_sql = "SELECT c.course_code, c.course_name, c.room_no, c.start_time FROM enrollments e JOIN courses c ON e.course_id = c.id WHERE e.student_id = $user_id AND c.day_of_week = '$today_day' ORDER BY c.start_time ASC";
                     $res = $conn->query($routine_sql);
                     if ($res && $res->num_rows > 0) {
@@ -659,7 +738,6 @@ include 'includes/sidebar.php';
                         }
                     } else { echo '<p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;">No classes today.</p>'; }
                     
-                    // TOMORROW
                     $routine_sql_tmr = "SELECT c.course_code, c.course_name, c.room_no, c.start_time FROM enrollments e JOIN courses c ON e.course_id = c.id WHERE e.student_id = $user_id AND c.day_of_week = '$tomorrow_day' ORDER BY c.start_time ASC";
                     $res_tmr = $conn->query($routine_sql_tmr);
                     if ($res_tmr && $res_tmr->num_rows > 0) {
@@ -679,7 +757,7 @@ include 'includes/sidebar.php';
         <div class="card" style="margin-bottom: 24px;">
             <h4 style="font-size: 15px; font-weight: 600; color: var(--text-main); margin-bottom: 16px;">Pending Assignments</h4>
             <?php
-            if ($user_role === 'Student' && $is_setup_complete) {
+            if ($user_role === 'Student' && $has_enrollments) {
                 $tasks_sql = "SELECT t.task_title, t.deadline, c.course_code FROM tasks t JOIN enrollments e ON t.course_id = e.course_id JOIN courses c ON t.course_id = c.id WHERE e.student_id = $user_id AND t.deadline >= CURDATE() ORDER BY t.deadline ASC LIMIT 3";
                 $tasks_result = $conn->query($tasks_sql);
                 if ($tasks_result && $tasks_result->num_rows > 0) {
@@ -764,6 +842,7 @@ include 'includes/sidebar.php';
     </div>
 </div>
 
+<!-- EDIT POST MODAL -->
 <div class="modal-overlay" id="editModal">
     <div class="modal-content" style="max-width: 500px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid var(--border-light); padding-bottom:12px;">
@@ -771,6 +850,14 @@ include 'includes/sidebar.php';
             <button style="background:none; border:none; cursor:pointer; color:var(--text-muted);" onclick="document.getElementById('editModal').style.display='none'">
                 <i class="fa-solid fa-xmark" style="font-size: 24px;"></i>
             </button>
+        </div>
+        <div style="margin-bottom: 15px;">
+            <label style="font-size: 13px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; display: block;">Post Privacy</label>
+            <select id="editPrivacy" class="poll-input" style="padding: 8px; font-size: 13px;">
+                <option value="Public">Public</option>
+                <option value="Connections">Connections</option>
+                <option value="Only Me">Only Me</option>
+            </select>
         </div>
         <textarea id="editText" class="composer-input" style="width:100%; min-height: 100px; padding:0; margin-bottom:15px; border: 1px solid var(--border-light); padding: 10px; border-radius: 8px;"></textarea>
         <input type="hidden" id="editPostId">
@@ -801,6 +888,107 @@ include 'includes/sidebar.php';
         </div>
     </div>
 </div>
+
+<script>
+    function reportPost(postId) {
+        if(confirm("Report this post to admins?")) {
+            let fd = new FormData();
+            fd.append('ajax_action', 'report_post');
+            fd.append('post_id', postId);
+            fetch('dashboard.php', { method: 'POST', body: fd })
+            .then(r=>r.json()).then(data=>{
+                if(data.status === 'success') showToast("Post reported to admins");
+            });
+        }
+    }
+
+    function openEditPost(postId, currentPrivacy = 'Public') {
+        document.getElementById('editPostId').value = postId;
+        let content = document.getElementById('post-content-' + postId).getAttribute('data-raw');
+        document.getElementById('editText').value = content;
+        
+        let privSelect = document.getElementById('editPrivacy');
+        if(privSelect) privSelect.value = currentPrivacy;
+
+        document.getElementById('editModal').style.display = 'flex';
+        document.getElementById('post-menu-' + postId).style.display = 'none';
+    }
+
+    function submitEdit() {
+        let postId = document.getElementById('editPostId').value;
+        let content = document.getElementById('editText').value.trim();
+        let privacy = document.getElementById('editPrivacy') ? document.getElementById('editPrivacy').value : 'Public';
+        if(content === '') return;
+
+        let fd = new FormData();
+        fd.append('ajax_action', 'edit_post');
+        fd.append('post_id', postId);
+        fd.append('content', content);
+        fd.append('privacy', privacy);
+
+        fetch(window.location.href, { method: 'POST', body: fd }).then(r=>r.json()).then(data => {
+            if(data.status === 'success') {
+                document.getElementById('editModal').style.display = 'none';
+                showToast("Post updated successfully");
+                setTimeout(() => location.reload(), 800); 
+            }
+        });
+    }
+
+    function skipSetup() {
+        document.getElementById('extractedCourses').value = '';
+        document.getElementById('ocrForm').submit();
+    }
+
+    function startRealOCR(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        document.getElementById('modalStep1').style.display = 'none';
+        document.getElementById('modalStep2').style.display = 'block';
+        
+        const progressDiv = document.getElementById('scanProgress');
+        const logDiv = document.getElementById('scanLog');
+
+        Tesseract.recognize(
+            file,
+            'eng',
+            { logger: m => {
+                if (m.status === 'recognizing text') {
+                    let progress = Math.round(m.progress * 100);
+                    progressDiv.style.width = progress + '%';
+                    logDiv.innerText = 'Extracting data: ' + progress + '%';
+                } else {
+                    logDiv.innerText = m.status + '...';
+                }
+            }}
+        ).then(({ data: { text } }) => {
+            logDiv.innerText = 'Processing text...';
+            
+            const regex = /[A-Z]{3}\s*\d{3}/gi;
+            let matches = text.match(regex);
+            
+            if (matches && matches.length > 0) {
+                matches = [...new Set(matches.map(m => m.replace(/\s+/g, '').toUpperCase()))];
+                document.getElementById('extractedCourses').value = matches.join(',');
+                logDiv.innerHTML = '<span style="color:#10B981;">Found courses: ' + matches.join(', ') + '</span>';
+            } else {
+                document.getElementById('extractedCourses').value = '';
+                logDiv.innerHTML = '<span style="color:#EF4444;">No clear courses found. Proceeding...</span>';
+            }
+            
+            setTimeout(() => {
+                document.getElementById('ocrForm').submit();
+            }, 1000);
+            
+        }).catch(err => {
+            logDiv.innerHTML = '<span style="color:#EF4444;">Scan failed. Skipping...</span>';
+            setTimeout(() => {
+                document.getElementById('ocrForm').submit();
+            }, 1500);
+        });
+    }
+</script>
 
 <script src="assets/main.js"></script>
 </body>

@@ -159,7 +159,6 @@ include 'includes/sidebar.php';
 </div>
 
 <main class="skills-layout">
-    
     <div class="main-column">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding: 20px; background: #fff; border-radius: 12px; border: 1px solid var(--border-light); box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
             <div>
@@ -258,12 +257,10 @@ include 'includes/sidebar.php';
     </div>
 
     <div class="side-column">
-        
         <div class="card" style="margin-bottom: 24px;">
             <h4 style="font-size: 15px; font-weight: 600; color: var(--text-main); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
                 <i class="fa-solid fa-bolt" style="color: var(--uiu-orange); font-size: 20px;"></i> My Skill Set
             </h4>
-            
             <div id="mySkillsList" style="margin-bottom: 20px;">
                 <?php
                 $skills_sql = "SELECT id, skill_name FROM user_skills WHERE user_id = $user_id";
@@ -280,7 +277,6 @@ include 'includes/sidebar.php';
                 }
                 ?>
             </div>
-
             <div style="margin-bottom: 15px;">
                 <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 8px;">Suggested</div>
                 <span class="suggested-skill" onclick="addSkill('ReactJS')">+ ReactJS</span>
@@ -290,7 +286,6 @@ include 'includes/sidebar.php';
                 <span class="suggested-skill" onclick="addSkill('Machine Learning')">+ Machine Learning</span>
                 <span class="suggested-skill" onclick="addSkill('Laravel')">+ Laravel</span>
             </div>
-
             <div style="display: flex; gap: 8px;">
                 <input type="text" id="newSkillInput" class="poll-input" style="margin-bottom: 0;" placeholder="Custom skill..." onkeypress="if(event.key === 'Enter') addSkill()">
                 <button class="btn-primary" style="padding: 10px 16px;" onclick="addSkill()">Add</button>
@@ -323,7 +318,6 @@ include 'includes/sidebar.php';
             </button>
         </div>
         <form method="POST" enctype="multipart/form-data">
-            
             <div style="border: 2px dashed var(--border-light); border-radius: 8px; padding: 25px; text-align: center; cursor: pointer; margin-bottom: 15px; background: var(--bg-light); transition: 0.2s;" onclick="document.getElementById('projImage').click()" id="uploadBox">
                 <i class="fa-solid fa-cloud-arrow-up" style="color: var(--text-muted); margin-bottom: 8px; font-size: 32px;"></i>
                 <p style="font-size: 13px; color: var(--text-main); font-weight: 600;" id="uploadText">Upload Project Thumbnail</p>
