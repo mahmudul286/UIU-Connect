@@ -10,17 +10,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['upload_material'])) {
     $title = $conn->real_escape_string($_POST['material_title']);
     $category = $conn->real_escape_string($_POST['material_category']);
     
+    // FIX: Secure File Upload
     if (isset($_FILES['material_file']) && $_FILES['material_file']['error'] == 0) {
         $target_dir = "uploads/materials/";
         if (!file_exists($target_dir)) mkdir($target_dir, 0777, true);
         
-        $file_name = time() . '_' . basename($_FILES["material_file"]["name"]);
-        $target_file = $target_dir . $file_name;
+        $file_ext = strtolower(pathinfo($_FILES["material_file"]["name"], PATHINFO_EXTENSION));
+        $allowed_exts = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'zip', 'rar', 'txt', 'jpg', 'jpeg', 'png']; // Restricted
         
-        if (move_uploaded_file($_FILES["material_file"]["tmp_name"], $target_file)) {
-            $stmt = $conn->prepare("INSERT INTO course_materials (course_id, uploader_id, title, category, file_path) VALUES (?, ?, ?, ?, ?)");
-            $stmt->bind_param("iisss", $course_id, $user_id, $title, $category, $target_file);
-            $stmt->execute();
+        if (in_array($file_ext, $allowed_exts)) {
+            $file_name = time() . '_' . bin2hex(random_bytes(8)) . '.' . $file_ext;
+            $target_file = $target_dir . $file_name;
+            
+            if (move_uploaded_file($_FILES["material_file"]["tmp_name"], $target_file)) {
+                $stmt = $conn->prepare("INSERT INTO course_materials (course_id, uploader_id, title, category, file_path) VALUES (?, ?, ?, ?, ?)");
+                $stmt->bind_param("iisss", $course_id, $user_id, $title, $category, $target_file);
+                $stmt->execute();
+            }
         }
     }
     header("Location: courses.php"); exit();

@@ -14,7 +14,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['post_job'])) {
     $link = $conn->real_escape_string($_POST['apply_link']);
     $desc = $conn->real_escape_string($_POST['description']);
 
-    $stmt = $conn->prepare("INSERT INTO jobs (posted_by, title, company, location, job_type, apply_link, description) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    // FIX: Set admin_approval_status to 'pending' by default
+    $stmt = $conn->prepare("INSERT INTO jobs (posted_by, title, company, location, job_type, apply_link, description, admin_approval_status) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')");
     $stmt->bind_param("issssss", $user_id, $title, $company, $location, $type, $link, $desc);
     $stmt->execute();
     header("Location: alumni.php"); exit();
@@ -31,17 +32,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['join_alumni'])) {
         $conn->query("UPDATE alumni_profiles SET current_company='$company', designation='$designation', linkedin_url='$linkedin', is_mentor=$is_mentor WHERE user_id=$user_id");
     } else {
         $conn->query("INSERT INTO alumni_profiles (user_id, current_company, designation, linkedin_url, is_mentor) VALUES ($user_id, '$company', '$designation', '$linkedin', $is_mentor)");
-        $conn->query("UPDATE users SET role='Alumni' WHERE id=$user_id");
-        $_SESSION['role'] = 'Alumni';
+        
+        // FIX: Prevent Faculty and Admins from losing their role. Only upgrade 'Student' to 'Alumni'.
+        if ($user_role === 'Student') {
+            $conn->query("UPDATE users SET role='Alumni' WHERE id=$user_id");
+            $_SESSION['role'] = 'Alumni';
+            $user_role = 'Alumni';
+        }
     }
     header("Location: alumni.php"); exit();
 }
 
 $is_alumni = ($user_role === 'Alumni');
 $my_alumni_data = null;
-if ($is_alumni) {
-    $res = $conn->query("SELECT * FROM alumni_profiles WHERE user_id = $user_id");
-    if ($res->num_rows > 0) $my_alumni_data = $res->fetch_assoc();
+$res = $conn->query("SELECT * FROM alumni_profiles WHERE user_id = $user_id");
+if ($res->num_rows > 0) {
+    $my_alumni_data = $res->fetch_assoc();
+    $is_alumni = true; // Treats users who registered in the directory as Alumni for UI purposes
 }
 
 include 'includes/header.php';
@@ -73,7 +80,8 @@ include 'includes/sidebar.php';
 
         <div id="jobGrid">
             <?php
-            $sql = "SELECT j.*, u.full_name, u.role FROM jobs j JOIN users u ON j.posted_by = u.id ORDER BY j.created_at DESC";
+            // FIX: Only show jobs that are approved by the admin OR posted by the current user (so they can see their pending jobs)
+            $sql = "SELECT j.*, u.full_name, u.role FROM jobs j JOIN users u ON j.posted_by = u.id WHERE j.admin_approval_status = 'approved' OR j.posted_by = $user_id ORDER BY j.created_at DESC";
             $res = $conn->query($sql);
 
             if ($res && $res->num_rows > 0) {
@@ -81,18 +89,28 @@ include 'includes/sidebar.php';
                     $badge_class = 'badge-full';
                     if ($job['job_type'] == 'Internship') $badge_class = 'badge-intern';
                     if ($job['job_type'] == 'Part-Time') $badge_class = 'badge-part';
+                    
+                    $is_pending = ($job['admin_approval_status'] == 'pending');
                     ?>
-                    <div class="job-card job-item" data-type="<?php echo htmlspecialchars($job['job_type']); ?>">
+                    <div class="job-card job-item" data-type="<?php echo htmlspecialchars($job['job_type']); ?>" style="<?php echo $is_pending ? 'opacity: 0.7; border: 2px dashed var(--border-light);' : ''; ?>">
                         <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                             <div>
                                 <span class="job-badge <?php echo $badge_class; ?>"><?php echo htmlspecialchars($job['job_type']); ?></span>
+                                
+                                <?php if($is_pending): ?>
+                                    <span style="display:inline-block; margin-left: 8px; font-size: 11px; background: #FEF3C7; color: #D97706; padding: 4px 8px; border-radius: 6px; font-weight: 600;">Pending Admin Approval</span>
+                                <?php endif; ?>
+
                                 <h3 style="font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 6px;"><?php echo htmlspecialchars($job['title']); ?></h3>
                                 <div style="display: flex; gap: 15px; font-size: 13px; color: var(--text-muted); margin-bottom: 12px; font-weight: 500;">
                                     <span style="display: flex; align-items: center; gap: 6px;"><i class="fa-regular fa-building" style="font-size: 14px;"></i> <?php echo htmlspecialchars($job['company']); ?></span>
                                     <span style="display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-location-dot" style="font-size: 14px;"></i> <?php echo htmlspecialchars($job['location']); ?></span>
                                 </div>
                             </div>
-                            <a href="<?php echo htmlspecialchars($job['apply_link']); ?>" target="_blank" class="btn-primary" style="padding: 8px 20px; font-size: 13px; text-decoration: none;">Apply Now</a>
+                            
+                            <?php if(!$is_pending): ?>
+                                <a href="<?php echo htmlspecialchars($job['apply_link']); ?>" target="_blank" class="btn-primary" style="padding: 8px 20px; font-size: 13px; text-decoration: none;">Apply Now</a>
+                            <?php endif; ?>
                         </div>
                         <p style="font-size: 14px; color: var(--text-muted); line-height: 1.5; border-top: 1px solid var(--border-light); padding-top: 12px; margin-top: 5px;"><?php echo nl2br(htmlspecialchars($job['description'])); ?></p>
                         <div style="font-size: 12px; color: var(--text-muted); margin-top: 12px; display: flex; align-items: center; justify-content: space-between;">

@@ -155,7 +155,7 @@ if (isset($_SESSION['user_id'])) {
         <a href="register.php" class="cta-btn">Join UIU Connect Today</a>
     </section>
 
-    <footer class="footer">
+   <footer class="footer">
         <div class="footer-grid">
             <div>
                 <div class="footer-logo">UIU<span>Connect</span></div>
@@ -180,11 +180,17 @@ if (isset($_SESSION['user_id'])) {
                 </ul>
             </div>
         </div>
-        <div style="text-align: center; font-size: 14px; color: #64748b;">
-            &copy; <?php echo date("Y"); ?> UIU Connect Team. All rights reserved.
+        
+        <div style="position: relative; text-align: center; font-size: 14px; color: #64748b; margin-top: 30px; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 20px;">
+            
+            <span>&copy; <?php echo date("Y"); ?> UIU Connect Team. All rights reserved.</span>
+            
+            <a href="admin/" style="position: absolute; right: 0; color: #64748b; text-decoration: none; transition: 0.2s;" onmouseover="this.style.color='#f97316'" onmouseout="this.style.color='#64748b'">
+                <i class="fa-solid fa-lock" style="font-size: 10px; margin-right: 3px;"></i> Admin Login
+            </a>
+            
         </div>
     </footer>
-
 </body>
 
 </html>

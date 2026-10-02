@@ -1,9 +1,11 @@
 <?php
-require 'includes/db_connect.php';
+require_once 'includes/db_connect.php'; 
+
 if (isset($_SESSION['user_id'])) {
     header("Location: dashboard.php");
     exit();
 }
+
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $name = $_POST['full_name'];
     $email = $_POST['email'];
@@ -14,8 +16,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $stmt = $conn->prepare("INSERT INTO users (full_name, email, password_hash, role, department) VALUES (?, ?, ?, ?, ?)");
     $stmt->bind_param("sssss", $name, $email, $password, $role, $department);
     
-    if ($stmt->execute()) { header("Location: login.php?msg=registered"); exit(); } 
-    else { $error = "Email already exists!"; }
+    if ($stmt->execute()) { 
+        header("Location: login.php?msg=registered"); 
+        exit(); 
+    } else { 
+        $error = "Email already exists!"; 
+    }
 }
 ?>
 <!DOCTYPE html>

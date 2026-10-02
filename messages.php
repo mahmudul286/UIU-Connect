@@ -1,14 +1,15 @@
 <?php
 require_once 'includes/db_connect.php';
-if (!isset($_SESSION['user_id'])) { header("Location: index.php"); exit(); }
-
+if (!isset($_SESSION['user_id'])) {
+    header("Location: index.php");
+    exit();
+}
 $user_id = $_SESSION['user_id'];
 $active_chat_user = isset($_GET['user']) ? intval($_GET['user']) : null;
 
 // Encryption Configuration
 define('ENC_METHOD', 'AES-256-CBC');
 define('ENC_KEY', hash('sha256', 'uiu_connect_secure_chat_key_2026'));
-define('ENC_IV', substr(hash('sha256', 'uiu_connect_chat_iv_vector'), 0, 16));
 
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
     header('Content-Type: application/json');
@@ -17,33 +18,61 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
     if ($action == 'send_message') {
         $receiver_id = intval($_POST['receiver_id']);
         $msg_text = $_POST['message_text'];
+
         if (!empty(trim($msg_text))) {
-            // Encrypt Message
-            $encrypted_msg = openssl_encrypt($msg_text, ENC_METHOD, ENC_KEY, 0, ENC_IV);
-            $safe_msg = $conn->real_escape_string($encrypted_msg);
-            
-            $conn->query("INSERT INTO messages (sender_id, receiver_id, message_text) VALUES ($user_id, $receiver_id, '$safe_msg')");
+            // SECURE FIX: Dynamic IV Generation
+            $ivlen = openssl_cipher_iv_length(ENC_METHOD);
+            $iv = openssl_random_pseudo_bytes($ivlen);
+            $encrypted_msg = openssl_encrypt($msg_text, ENC_METHOD, ENC_KEY, 0, $iv);
+
+            // Combine IV and Encrypted text, then encode to base64
+            $final_payload = base64_encode($iv . $encrypted_msg);
+            $safe_msg = $conn->real_escape_string($final_payload);
+
+            $stmt = $conn->prepare("INSERT INTO messages (sender_id, receiver_id, message_text) VALUES (?, ?, ?)");
+            $stmt->bind_param("iis", $user_id, $receiver_id, $safe_msg);
+            $stmt->execute();
         }
-        echo json_encode(['status' => 'success']); exit();
+        echo json_encode(['status' => 'success']);
+        exit();
     }
-    
+
     if ($action == 'load_messages') {
         $target_id = intval($_POST['target_id']);
         $conn->query("UPDATE messages SET is_read = 1 WHERE sender_id = $target_id AND receiver_id = $user_id");
-        
+
         $sql = "SELECT * FROM messages WHERE (sender_id = $user_id AND receiver_id = $target_id) OR (sender_id = $target_id AND receiver_id = $user_id) ORDER BY created_at ASC";
         $res = $conn->query($sql);
         $html = '';
+
         if ($res->num_rows > 0) {
             while ($msg = $res->fetch_assoc()) {
                 $is_mine = ($msg['sender_id'] == $user_id);
                 $bubble_class = $is_mine ? 'msg-mine' : 'msg-theirs';
                 $align = $is_mine ? 'flex-end' : 'flex-start';
-                
-                // Decrypt Message
-                $decrypted = openssl_decrypt($msg['message_text'], ENC_METHOD, ENC_KEY, 0, ENC_IV);
-                $display_text = $decrypted ? $decrypted : $msg['message_text']; 
-                
+
+                // SECURE FIX: Decrypt Message with Dynamic IV detection
+                $decoded_payload = base64_decode($msg['message_text'], true);
+                $ivlen = openssl_cipher_iv_length(ENC_METHOD);
+                $display_text = $msg['message_text']; // Fallback if decryption fails
+
+                // Check if it's a new format message (Base64 + Dynamic IV)
+                if ($decoded_payload !== false && strlen($decoded_payload) > $ivlen) {
+                    $iv = substr($decoded_payload, 0, $ivlen);
+                    $ciphertext = substr($decoded_payload, $ivlen);
+                    $decrypted = openssl_decrypt($ciphertext, ENC_METHOD, ENC_KEY, 0, $iv);
+                    if ($decrypted) {
+                        $display_text = $decrypted;
+                    }
+                } else {
+                    // Fallback for old messages encrypted with static IV
+                    $static_iv = substr(hash('sha256', 'uiu_connect_chat_iv_vector'), 0, 16);
+                    $decrypted_old = openssl_decrypt($msg['message_text'], ENC_METHOD, ENC_KEY, 0, $static_iv);
+                    if ($decrypted_old) {
+                        $display_text = $decrypted_old;
+                    }
+                }
+
                 $html .= '<div style="display: flex; flex-direction: column; align-items: '.$align.'; margin-bottom: 12px;">
                             <div class="'.$bubble_class.'">'.htmlspecialchars($display_text).'</div>
                             <small style="font-size: 10px; color: var(--text-muted); margin-top: 4px;">'.date('h:i A', strtotime($msg['created_at'])).'</small>
@@ -52,14 +81,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
         } else {
             $html = '<div style="text-align:center; color:var(--text-muted); padding:40px; font-size:13px;">Say hi to start the secure conversation!</div>';
         }
-        echo json_encode(['html' => $html]); exit();
+        echo json_encode(['html' => $html]);
+        exit();
     }
 }
 
 $active_user_name = "Select a chat";
 $active_user_status = "";
 $active_initials = "";
-
 if ($active_chat_user) {
     $u_res = $conn->query("SELECT full_name, role FROM users WHERE id = $active_chat_user");
     if ($u_res->num_rows > 0) {
@@ -73,12 +102,9 @@ if ($active_chat_user) {
 include 'includes/header.php';
 include 'includes/sidebar.php';
 ?>
-
 <link rel="stylesheet" href="assets/dashboard.css">
 <link rel="stylesheet" href="assets/messages.css">
-
 <div class="messenger-container">
-    
     <div class="contacts-panel">
         <div class="contacts-header">
             <h2 style="font-size: 20px; color: var(--text-main);">Messages</h2>
@@ -87,7 +113,6 @@ include 'includes/sidebar.php';
                 <input type="text" placeholder="Search chats..." style="width: 100%; padding: 8px 12px 8px 36px; border: 1px solid var(--border-light); border-radius: 8px; font-size: 13px; outline: none; background: var(--bg-light); box-sizing: border-box;">
             </div>
         </div>
-        
         <div style="overflow-y: auto; flex: 1;">
             <div style="padding: 10px 20px; font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Recent Chats</div>
             <?php
@@ -116,7 +141,6 @@ include 'includes/sidebar.php';
             ?>
         </div>
     </div>
-
     <div class="chat-panel">
         <?php if ($active_chat_user): ?>
             <div class="chat-header">
@@ -142,12 +166,12 @@ include 'includes/sidebar.php';
                 const targetUserId = <?php echo $active_chat_user; ?>;
                 const chatBox = document.getElementById('chatBox');
                 let isUserScrolling = false;
-
+                
                 chatBox.addEventListener('scroll', function() {
                     if (chatBox.scrollTop + chatBox.clientHeight < chatBox.scrollHeight - 20) { isUserScrolling = true; } 
                     else { isUserScrolling = false; }
                 });
-
+                
                 function loadMessages() {
                     let fd = new FormData(); fd.append('ajax_action', 'load_messages'); fd.append('target_id', targetUserId);
                     fetch('messages.php?user=' + targetUserId, { method: 'POST', body: fd })
@@ -157,7 +181,7 @@ include 'includes/sidebar.php';
                         if (!isUserScrolling) { chatBox.scrollTop = chatBox.scrollHeight; }
                     });
                 }
-
+                
                 function sendMessage() {
                     let input = document.getElementById('msgInput');
                     let text = input.value.trim();
@@ -167,11 +191,9 @@ include 'includes/sidebar.php';
                     fetch('messages.php?user=' + targetUserId, { method: 'POST', body: fd })
                     .then(r => r.json()).then(data => { if(data.status === 'success') { isUserScrolling = false; loadMessages(); } });
                 }
-
                 function handleSend(e) { if(e.key === 'Enter') sendMessage(); }
                 loadMessages(); setInterval(loadMessages, 3000);
             </script>
-            
         <?php else: ?>
             <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#f8fafc; color:var(--text-muted);">
                 <i class="fa-regular fa-comments" style="font-size: 80px; margin-bottom: 20px; opacity: 0.3;"></i>
@@ -181,7 +203,6 @@ include 'includes/sidebar.php';
         <?php endif; ?>
     </div>
 </div>
-
 <script src="assets/main.js"></script>
 </body>
 </html>

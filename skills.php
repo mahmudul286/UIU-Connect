@@ -129,14 +129,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['project_title']) && !i
     $live = $conn->real_escape_string($_POST['live_url']);
     $image_path = NULL;
 
+    // FIX: Randomized secure file name for Project Thumbnail
     if (isset($_FILES['project_image']) && $_FILES['project_image']['error'] == 0) {
         $target_dir = "uploads/projects/";
         if (!file_exists($target_dir)) mkdir($target_dir, 0777, true);
-        $file_name = time() . '_' . basename($_FILES["project_image"]["name"]);
-        $target_file = $target_dir . $file_name;
-        $file_ext = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
-        if (in_array($file_ext, ['jpg','jpeg','png','webp']) && move_uploaded_file($_FILES["project_image"]["tmp_name"], $target_file)) {
-            $image_path = $target_file;
+        
+        $file_ext = strtolower(pathinfo($_FILES["project_image"]["name"], PATHINFO_EXTENSION));
+        
+        if (in_array($file_ext, ['jpg','jpeg','png','webp'])) {
+            $file_name = time() . '_' . bin2hex(random_bytes(8)) . '.' . $file_ext;
+            $target_file = $target_dir . $file_name;
+            
+            if (move_uploaded_file($_FILES["project_image"]["tmp_name"], $target_file)) {
+                $image_path = $target_file;
+            }
         }
     }
 

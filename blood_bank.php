@@ -63,23 +63,33 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['request_blood'])) {
     header("Location: blood_bank.php"); exit();
 }
 
+// FIX: Prepared Statements to resolve empty date string DB crash
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['register_donor'])) {
-    $bg = $conn->real_escape_string($_POST['donor_bg']);
-    $last_date = !empty($_POST['last_donation']) ? $conn->real_escape_string($_POST['last_donation']) : NULL;
-    $contact = $conn->real_escape_string($_POST['donor_contact']);
+    $bg = $_POST['donor_bg'];
+    $last_date = !empty($_POST['last_donation']) ? $_POST['last_donation'] : NULL;
+    $contact = $_POST['donor_contact'];
     
     $check = $conn->query("SELECT id FROM blood_donors WHERE user_id = $user_id");
     if($check->num_rows > 0) {
-        $conn->query("UPDATE blood_donors SET blood_group='$bg', last_donation='$last_date', contact_number='$contact', is_available=1 WHERE user_id=$user_id");
+        $stmt = $conn->prepare("UPDATE blood_donors SET blood_group=?, last_donation=?, contact_number=?, is_available=1 WHERE user_id=?");
+        $stmt->bind_param("sssi", $bg, $last_date, $contact, $user_id);
     } else {
-        $conn->query("INSERT INTO blood_donors (user_id, blood_group, last_donation, contact_number) VALUES ($user_id, '$bg', '$last_date', '$contact')");
+        $stmt = $conn->prepare("INSERT INTO blood_donors (user_id, blood_group, last_donation, contact_number) VALUES (?, ?, ?, ?)");
+        $stmt->bind_param("isss", $user_id, $bg, $last_date, $contact);
     }
+    $stmt->execute();
     header("Location: blood_bank.php"); exit();
 }
 
+// Linter Warning Fix: Pre-declare the variable as null
 $is_donor = false;
+$my_donor_info = null;
+
 $donor_check = $conn->query("SELECT * FROM blood_donors WHERE user_id = $user_id");
-if ($donor_check->num_rows > 0) { $is_donor = true; $my_donor_info = $donor_check->fetch_assoc(); }
+if ($donor_check->num_rows > 0) { 
+    $is_donor = true; 
+    $my_donor_info = $donor_check->fetch_assoc(); 
+}
 
 include 'includes/header.php';
 include 'includes/sidebar.php';

@@ -24,16 +24,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
         if ($check->num_rows > 0) {
             $row = $check->fetch_assoc();
             if ($row['status'] == 'pending' && $row['sender_id'] == $target_id) {
-                // If receiving a request, accept it
                 $conn->query("UPDATE connections SET status = 'accepted' WHERE id = " . $row['id']);
                 echo json_encode(['status' => 'success', 'btn_state' => 'Connected']);
             } else {
-                // Unfriend or Cancel request
                 $conn->query("DELETE FROM connections WHERE id = " . $row['id']);
                 echo json_encode(['status' => 'success', 'btn_state' => 'Connect']);
             }
         } else {
-            // Send request
             $conn->query("INSERT INTO connections (sender_id, receiver_id, status) VALUES ($user_id, $target_id, 'pending')");
             $conn->query("INSERT INTO notifications (user_id, sender_id, type) VALUES ($target_id, $user_id, 'connection')");
             echo json_encode(['status' => 'success', 'btn_state' => 'Pending']);
@@ -62,14 +59,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_profile']) && $
     $hometown = $conn->real_escape_string($_POST['hometown']);
     
     $pic_query = "";
+    
+    // Secure File Upload
     if (isset($_FILES['profile_pic']) && $_FILES['profile_pic']['error'] == 0) {
         $target_dir = "uploads/profiles/";
         if (!file_exists($target_dir)) mkdir($target_dir, 0777, true);
-        $file_name = time() . '_' . basename($_FILES["profile_pic"]["name"]);
-        $target_file = $target_dir . $file_name;
         
-        if (move_uploaded_file($_FILES["profile_pic"]["tmp_name"], $target_file)) {
-            $pic_query = ", profile_pic = '$target_file'";
+        $file_ext = strtolower(pathinfo($_FILES["profile_pic"]["name"], PATHINFO_EXTENSION));
+        $allowed_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp']; 
+        
+        if (in_array($file_ext, $allowed_exts)) {
+            $file_name = time() . '_' . bin2hex(random_bytes(8)) . '.' . $file_ext;
+            $target_file = $target_dir . $file_name;
+            
+            if (move_uploaded_file($_FILES["profile_pic"]["tmp_name"], $target_file)) {
+                $pic_query = ", profile_pic = '$target_file'";
+            }
         }
     }
 
@@ -77,6 +82,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_profile']) && $
     header("Location: profile.php"); exit();
 }
 
+// Fetch Profile Data
 $prof_sql = "SELECT * FROM users WHERE id = $profile_id";
 $prof_res = $conn->query($prof_sql);
 if ($prof_res->num_rows == 0) { echo "User not found."; exit(); }
@@ -84,9 +90,14 @@ $profile = $prof_res->fetch_assoc();
 
 $prof_initials = strtoupper($profile['full_name'][0] . (isset(explode(" ", $profile['full_name'])[1]) ? explode(" ", $profile['full_name'])[1][0] : ''));
 
+// Determine if the viewed profile is a Faculty
+$is_faculty_profile = ($profile['role'] === 'Faculty');
+
 $skills = [];
-$s_res = $conn->query("SELECT skill_name FROM user_skills WHERE user_id = $profile_id");
-while($s = $s_res->fetch_assoc()) { $skills[] = $s['skill_name']; }
+if (!$is_faculty_profile) {
+    $s_res = $conn->query("SELECT skill_name FROM user_skills WHERE user_id = $profile_id");
+    while($s = $s_res->fetch_assoc()) { $skills[] = $s['skill_name']; }
+}
 
 $job_data = null;
 $j_res = $conn->query("SELECT designation, current_company FROM alumni_profiles WHERE user_id = $profile_id");
@@ -139,7 +150,7 @@ include 'includes/sidebar.php';
                 <h1 class="profile-name">
                     <?php echo htmlspecialchars($profile['full_name']); ?>
                     <?php if($profile['role'] === 'Faculty'): ?>
-                        <i class="fa-solid fa-circle-check" style="color: #10B981; font-size: 20px;"></i>
+                        <i class="fa-solid fa-circle-check" style="color: #10B981; font-size: 20px;" title="Verified Faculty"></i>
                     <?php endif; ?>
                 </h1>
                 <?php if($profile['bio']): ?>
@@ -179,13 +190,15 @@ include 'includes/sidebar.php';
         <div class="intro-column">
             <div class="intro-card">
                 <h3 class="intro-title">Intro</h3>
+                <?php if(!$is_faculty_profile): ?>
                 <div class="intro-item">
                     <i class="fa-solid fa-graduation-cap" style="color: var(--text-muted); width: 20px; font-size: 16px; text-align: center;"></i>
                     <span>Studies <strong><?php echo htmlspecialchars($profile['department']); ?></strong> at UIU</span>
                 </div>
+                <?php endif; ?>
                 <div class="intro-item">
                     <i class="fa-solid fa-briefcase" style="color: var(--text-muted); width: 20px; font-size: 16px; text-align: center;"></i>
-                    <span>Role: <strong><?php echo htmlspecialchars($profile['role']); ?></strong></span>
+                    <span>Role: <strong><?php echo htmlspecialchars($profile['role']); ?> <?php echo $is_faculty_profile ? '('.htmlspecialchars($profile['department']).')' : ''; ?></strong></span>
                 </div>
                 
                 <?php if($job_data): ?>
@@ -228,6 +241,8 @@ include 'includes/sidebar.php';
                 <?php endif; ?>
             </div>
 
+            <!-- Show Skills ONLY if it's a Student Profile -->
+            <?php if(!$is_faculty_profile): ?>
             <div class="intro-card">
                 <h3 class="intro-title" style="display: flex; justify-content: space-between; align-items: center;">
                     Skills
@@ -245,6 +260,8 @@ include 'includes/sidebar.php';
                     <p style="font-size: 13px; color: var(--text-muted);">No skills added.</p>
                 <?php endif; ?>
             </div>
+            <?php endif; ?>
+
         </div>
 
         <div class="posts-column">
@@ -252,7 +269,15 @@ include 'includes/sidebar.php';
                 
                 <div class="profile-nav-tabs">
                     <button class="tab-btn active" onclick="switchProfileTab('posts', this)"><i class="fa-regular fa-newspaper" style="margin-right: 6px;"></i> Posts</button>
-                    <button class="tab-btn" onclick="switchProfileTab('projects', this)"><i class="fa-solid fa-laptop-code" style="margin-right: 6px;"></i> Projects</button>
+                    
+                    <?php if(!$is_faculty_profile): ?>
+                        <!-- Show Projects for Students -->
+                        <button class="tab-btn" onclick="switchProfileTab('projects', this)"><i class="fa-solid fa-laptop-code" style="margin-right: 6px;"></i> Projects</button>
+                    <?php else: ?>
+                        <!-- Show Assigned Courses for Faculty -->
+                        <button class="tab-btn" onclick="switchProfileTab('courses', this)"><i class="fa-solid fa-book" style="margin-right: 6px;"></i> Assigned Courses</button>
+                    <?php endif; ?>
+
                     <button class="tab-btn" onclick="switchProfileTab('connections', this)"><i class="fa-solid fa-user-group" style="margin-right: 6px;"></i> Connections</button>
                 </div>
 
@@ -313,7 +338,8 @@ include 'includes/sidebar.php';
                     ?>
                 </div>
 
-                <!-- TAB: PROJECTS -->
+                <?php if(!$is_faculty_profile): ?>
+                <!-- TAB: PROJECTS (Only for Students) -->
                 <div id="tab-projects" class="profile-tab-content">
                     <?php
                     $proj_sql = "SELECT * FROM projects WHERE user_id = $profile_id ORDER BY created_at DESC";
@@ -355,6 +381,31 @@ include 'includes/sidebar.php';
                     }
                     ?>
                 </div>
+                
+                <?php else: ?>
+                <!-- TAB: COURSES (Only for Faculty) -->
+                <div id="tab-courses" class="profile-tab-content">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <?php
+                        $fac_courses = $conn->query("SELECT * FROM courses WHERE faculty_id = $profile_id");
+                        if ($fac_courses && $fac_courses->num_rows > 0) {
+                            while ($fc = $fac_courses->fetch_assoc()) {
+                                echo '<div style="padding: 16px; border: 1px solid var(--border-light); border-radius: 8px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                                        <strong style="font-size: 16px; color: var(--text-main); display: block; margin-bottom: 4px;">'.htmlspecialchars($fc['course_code']).'</strong>
+                                        <span style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 10px;">'.htmlspecialchars($fc['course_name']).'</span>
+                                        <div style="display: flex; gap: 10px; font-size: 12px; color: var(--text-muted);">
+                                            <span style="background: var(--bg-light); padding: 4px 8px; border-radius: 4px; font-weight: 600;">Sec: '.htmlspecialchars($fc['section'] ?? 'N/A').'</span>
+                                            <span style="background: var(--bg-light); padding: 4px 8px; border-radius: 4px; font-weight: 600;">Room: '.htmlspecialchars($fc['room_no'] ?? 'N/A').'</span>
+                                        </div>
+                                      </div>';
+                            }
+                        } else {
+                            echo '<div class="private-state" style="grid-column: 1 / -1;"><i class="fa-solid fa-book-open" style="font-size: 48px; opacity: 0.3; margin-bottom: 10px; display:block;"></i> No courses assigned yet.</div>';
+                        }
+                        ?>
+                    </div>
+                </div>
+                <?php endif; ?>
 
                 <!-- TAB: CONNECTIONS -->
                 <div id="tab-connections" class="profile-tab-content">

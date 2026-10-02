@@ -17,19 +17,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
     header('Content-Type: application/json');
     $action = $_POST['ajax_action'];
 
-    // 1. REPORT POST
     if ($action == 'report_post') {
         $post_id = intval($_POST['post_id']);
         $conn->query("INSERT IGNORE INTO post_reports (post_id, user_id) VALUES ($post_id, $user_id)");
         echo json_encode(['status' => 'success']); exit();
     }
 
-    // 2. LIVE SEARCH
     if ($action == 'live_search') {
         $query = $conn->real_escape_string($_POST['query']);
         $html = '';
 
-        // Search Users
         $sql_users = "SELECT id, full_name, role, department, profile_pic FROM users WHERE full_name LIKE '%$query%' LIMIT 3";
         $res_users = $conn->query($sql_users);
         if($res_users->num_rows > 0) {
@@ -48,7 +45,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
             }
         }
 
-        // Search Posts
         $sql_posts = "SELECT p.id, p.content, u.full_name FROM posts p JOIN users u ON p.user_id = u.id WHERE p.content LIKE '%$query%' AND p.privacy = 'Public' ORDER BY p.created_at DESC LIMIT 4";
         $res_posts = $conn->query($sql_posts);
         if($res_posts->num_rows > 0) {
@@ -67,7 +63,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
             }
         }
 
-        // Search Marketplace
         $sql_mp = "SELECT id, item_title, price FROM marketplace WHERE item_title LIKE '%$query%' AND admin_approval_status = 'approved' LIMIT 3";
         $res_mp = $conn->query($sql_mp);
         if($res_mp->num_rows > 0) {
@@ -90,7 +85,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
         echo json_encode(['html' => $html]); exit();
     }
     
-    // 3. POST LIKE
     if ($action == 'toggle_like') {
         $post_id = intval($_POST['post_id']);
         $check = $conn->query("SELECT id FROM likes WHERE user_id = $user_id AND post_id = $post_id");
@@ -112,7 +106,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
         echo json_encode(['status' => 'success', 'is_liked' => $is_liked, 'count' => $count]); exit();
     }
 
-    // 4. COMMENT LIKE
     if ($action == 'toggle_comment_like') {
         $comment_id = intval($_POST['comment_id']);
         $check = $conn->query("SELECT id FROM comment_likes WHERE user_id = $user_id AND comment_id = $comment_id");
@@ -127,7 +120,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
         echo json_encode(['status' => 'success', 'is_liked' => $is_liked, 'count' => $count]); exit();
     }
     
-    // 5. COMMENT / REPLY
     if ($action == 'add_comment') {
         $post_id = intval($_POST['post_id']);
         $text = $conn->real_escape_string($_POST['comment_text']);
@@ -175,7 +167,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
         echo json_encode(['status' => 'success', 'html' => $html, 'total_comments' => $total_comments, 'resolved_parent_id' => $resolved_parent_id]); exit();
     }
 
-    // 6. POLL VOTE
     if ($action == 'vote_poll') {
         $post_id = intval($_POST['post_id']);
         $option_index = intval($_POST['option_index']);
@@ -191,7 +182,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
         echo json_encode(['status' => 'success', 'results' => $results, 'total' => $total]); exit();
     }
 
-    // 7. SAVE
     if ($action == 'toggle_save') {
         $post_id = intval($_POST['post_id']);
         $check = $conn->query("SELECT id FROM saved_posts WHERE user_id = $user_id AND post_id = $post_id");
@@ -204,7 +194,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
         } exit();
     }
 
-    // 8. DELETE POST
     if ($action == 'delete_post') {
         $post_id = intval($_POST['post_id']);
         $check = $conn->query("SELECT id FROM posts WHERE id = $post_id AND user_id = $user_id");
@@ -215,7 +204,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
         exit();
     }
 
-    // 9. EDIT POST (With Privacy Update)
     if ($action == 'edit_post') {
         $post_id = intval($_POST['post_id']);
         $new_content = $conn->real_escape_string($_POST['content']);
@@ -229,7 +217,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
         } exit();
     }
 
-    // 10.EDIT HISTORY
     if ($action == 'get_edit_history') {
         $post_id = intval($_POST['post_id']);
         $history = $conn->query("SELECT old_content, edited_at FROM post_edit_history WHERE post_id = $post_id ORDER BY edited_at DESC");
@@ -244,7 +231,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
         echo json_encode(['status' => 'success', 'html' => $html]); exit();
     }
 
-    // 11. SHARE POST
     if ($action == 'share_post') {
         $post_id = intval($_POST['post_id']);
         $share_text = $conn->real_escape_string($_POST['share_text']);
@@ -256,21 +242,27 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
 
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['post_content']) && !isset($_POST['ajax_action'])) {
     $content = $conn->real_escape_string($_POST['post_content']);
-    $post_type = (isset($_POST['is_announcement']) && $user_role === 'Admin') ? 'Announcement' : 'General';
+    $post_type = (isset($_POST['is_announcement']) && ($user_role === 'Admin' || $user_role === 'Faculty')) ? 'Announcement' : 'General';
     $privacy = $conn->real_escape_string($_POST['post_privacy'] ?? 'Public');
     $media_path = NULL; $media_type = NULL; $poll_data = NULL;
 
     if (isset($_FILES['media_upload']) && $_FILES['media_upload']['error'] == 0) {
         $target_dir = "uploads/";
         if (!file_exists($target_dir)) mkdir($target_dir, 0777, true);
-        $file_name = time() . '_' . basename($_FILES["media_upload"]["name"]);
-        $target_file = $target_dir . $file_name;
-        $file_ext = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
-        if (move_uploaded_file($_FILES["media_upload"]["tmp_name"], $target_file)) {
-            $media_path = $target_file;
-            if(in_array($file_ext, ['jpg','jpeg','png','gif'])) $media_type = 'image';
-            elseif(in_array($file_ext, ['mp4','webm'])) $media_type = 'video';
-            else $media_type = 'document';
+        
+        $file_ext = strtolower(pathinfo($_FILES["media_upload"]["name"], PATHINFO_EXTENSION));
+        $allowed_exts = ['jpg','jpeg','png','gif','mp4','webm','pdf','doc','docx','zip'];
+        
+        if(in_array($file_ext, $allowed_exts)) {
+            $file_name = time() . '_' . bin2hex(random_bytes(8)) . '.' . $file_ext;
+            $target_file = $target_dir . $file_name;
+            
+            if (move_uploaded_file($_FILES["media_upload"]["tmp_name"], $target_file)) {
+                $media_path = $target_file;
+                if(in_array($file_ext, ['jpg','jpeg','png','gif'])) $media_type = 'image';
+                elseif(in_array($file_ext, ['mp4','webm'])) $media_type = 'video';
+                else $media_type = 'document';
+            }
         }
     }
 
@@ -341,7 +333,7 @@ include 'includes/sidebar.php';
     <span id="toastText">Action successful</span>
 </div>
 
-<?php if (!$has_enrollments): ?>
+<?php if (!$has_enrollments && $user_role === 'Student'): ?>
 <div class="modal-overlay" id="setupModal" style="display: <?php echo $show_setup_popup ? 'flex' : 'none'; ?>;">
     <div class="modal-content" id="modalStep1" style="text-align: center;">
         <h2 style="font-size: 24px; color: var(--text-main); margin-bottom: 10px; display:flex; align-items:center; justify-content: center; gap:8px;">
@@ -378,7 +370,7 @@ include 'includes/sidebar.php';
     
     <div class="feed-column">
         
-        <?php if (!$has_enrollments): ?>
+        <?php if (!$has_enrollments && $user_role === 'Student'): ?>
         <div class="card" style="margin-bottom: 24px; padding: 15px 20px; background: linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%); border: 1px solid #FDBA74; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
             <div style="display: flex; align-items: center; gap: 12px;">
                 <div style="width: 40px; height: 40px; background: #fff; color: var(--uiu-orange); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 2px 4px rgba(242,101,34,0.1);">
@@ -722,7 +714,9 @@ include 'includes/sidebar.php';
         </div>
 
         <div class="card" style="margin-bottom: 24px;">
-            <h4 style="font-size: 15px; font-weight: 600; color: var(--text-main); margin-bottom: 16px;">My Classes</h4>
+            <h4 style="font-size: 15px; font-weight: 600; color: var(--text-main); margin-bottom: 16px;">
+                <?php echo ($user_role === 'Faculty') ? 'Today\'s Schedule' : 'My Classes'; ?>
+            </h4>
             <div style="padding-left: 10px; border-left: 2px solid var(--border-light);">
                 <?php
                 if ($user_role === 'Student' && $has_enrollments) {
@@ -749,24 +743,42 @@ include 'includes/sidebar.php';
                                   </div>';
                         }
                     }
-                } else { echo '<p style="font-size: 12px; color: var(--text-muted);">Please sync routine.</p>'; }
+                } elseif ($user_role === 'Faculty') {
+                    $routine_sql = "SELECT course_code, course_name, room_no, start_time FROM courses WHERE faculty_id = $user_id AND day_of_week = '$today_day' ORDER BY start_time ASC";
+                    $res = $conn->query($routine_sql);
+                    if ($res && $res->num_rows > 0) {
+                        while($class = $res->fetch_assoc()) {
+                            echo '<div class="timeline-item">
+                                    <p style="font-size: 14px; font-weight: 600; color: var(--text-main);">'.$class['course_code'].' - '.$class['course_name'].'</p>
+                                    <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">'.date('h:i A', strtotime($class['start_time'])).' • Room '.$class['room_no'].'</p>
+                                  </div>';
+                        }
+                    } else { echo '<p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;">No classes scheduled for today.</p>'; }
+                } else {
+                    echo '<p style="font-size: 12px; color: var(--text-muted);">Please sync routine.</p>'; 
+                }
                 ?>
             </div>
         </div>
 
         <div class="card" style="margin-bottom: 24px;">
-            <h4 style="font-size: 15px; font-weight: 600; color: var(--text-main); margin-bottom: 16px;">Pending Assignments</h4>
+            <h4 style="font-size: 15px; font-weight: 600; color: var(--text-main); margin-bottom: 16px;">
+                <?php echo ($user_role === 'Faculty') ? 'Active Tasks Assigned' : 'Pending Assignments'; ?>
+            </h4>
             <?php
             if ($user_role === 'Student' && $has_enrollments) {
-                $tasks_sql = "SELECT t.task_title, t.deadline, c.course_code FROM tasks t JOIN enrollments e ON t.course_id = e.course_id JOIN courses c ON t.course_id = c.id WHERE e.student_id = $user_id AND t.deadline >= CURDATE() ORDER BY t.deadline ASC LIMIT 3";
+                $tasks_sql = "SELECT t.task_title, t.deadline, t.file_path, c.course_code FROM tasks t JOIN enrollments e ON t.course_id = e.course_id JOIN courses c ON t.course_id = c.id WHERE e.student_id = $user_id AND t.deadline >= CURDATE() ORDER BY t.deadline ASC LIMIT 3";
                 $tasks_result = $conn->query($tasks_sql);
                 if ($tasks_result && $tasks_result->num_rows > 0) {
                     while($task = $tasks_result->fetch_assoc()) {
                         echo '<div style="padding: 12px; background: #FEF2F2; border: 1px solid #FEE2E2; border-radius: 8px; margin-bottom: 10px;">
                                 <strong style="font-size: 12px; color: #EF4444;">'.$task['course_code'].'</strong>
                                 <p style="font-size: 13px; color: var(--text-main); font-weight: 500; margin: 4px 0;">'.$task['task_title'].'</p>
-                                <small style="color: var(--text-muted); font-size: 11px;">Due: '.date('M d, g:i A', strtotime($task['deadline'])).'</small>
-                              </div>';
+                                <small style="color: var(--text-muted); font-size: 11px; display:block; margin-bottom: 6px;">Due: '.date('M d, g:i A', strtotime($task['deadline'])).'</small>';
+                        if ($task['file_path']) {
+                            echo '<a href="'.htmlspecialchars($task['file_path']).'" download style="font-size: 11px; color: #0284C7; font-weight: 600; text-decoration: none;"><i class="fa-solid fa-file-arrow-down"></i> Download File</a>';
+                        }
+                        echo '</div>';
                     }
                 } else { 
                     echo '<div style="text-align:center; padding: 10px;">
@@ -774,10 +786,25 @@ include 'includes/sidebar.php';
                             <p style="font-size: 12px; color: var(--text-muted);">All caught up!</p>
                           </div>'; 
                 }
+            } elseif ($user_role === 'Faculty') {
+                $tasks_sql = "SELECT t.task_title, t.deadline, c.course_code FROM tasks t JOIN courses c ON t.course_id = c.id WHERE t.faculty_id = $user_id AND t.deadline >= CURDATE() ORDER BY t.deadline ASC LIMIT 3";
+                $tasks_result = $conn->query($tasks_sql);
+                if ($tasks_result && $tasks_result->num_rows > 0) {
+                    while($task = $tasks_result->fetch_assoc()) {
+                        echo '<div style="padding: 12px; background: #F0F9FF; border: 1px solid #E0F2FE; border-radius: 8px; margin-bottom: 10px;">
+                                <strong style="font-size: 12px; color: #0284C7;">'.$task['course_code'].'</strong>
+                                <p style="font-size: 13px; color: var(--text-main); font-weight: 500; margin: 4px 0;">'.$task['task_title'].'</p>
+                                <small style="color: var(--text-muted); font-size: 11px;">Due: '.date('M d, g:i A', strtotime($task['deadline'])).'</small>
+                              </div>';
+                    }
+                } else {
+                     echo '<p style="font-size: 12px; color: var(--text-muted); text-align: center;">No active tasks assigned.</p>';
+                }
             } else { echo '<p style="font-size: 12px; color: var(--text-muted); text-align: center;">Sync routine to view tasks.</p>'; }
             ?>
         </div>
 
+        <?php if($user_role !== 'Faculty'): ?>
         <div class="card" style="margin-bottom: 24px; padding: 20px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                 <h4 style="font-size: 16px; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
@@ -817,6 +844,8 @@ include 'includes/sidebar.php';
                 ?>
             </div>
         </div>
+        <?php endif; ?>
+
     </div>
 </main>
 
