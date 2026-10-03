@@ -1,6 +1,7 @@
 <?php
 require_once '../includes/db_connect.php';
 
+// Check if user is logged in and is an Admin
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'Admin') {
     header("Location: ../dashboard.php");
     exit();
@@ -8,6 +9,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'Admin') {
 
 $user_id = $_SESSION['user_id'];
 
+// Get fresh admin details safely
 $admin_res = $conn->query("SELECT full_name, email FROM users WHERE id = $user_id");
 if ($admin_res && $admin_res->num_rows > 0) {
     $admin_data = $admin_res->fetch_assoc();
@@ -19,6 +21,7 @@ if ($admin_res && $admin_res->num_rows > 0) {
 }
 $admin_initial = strtoupper($admin_name[0] ?? 'A');
 
+// Handle AJAX Actions
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
     header('Content-Type: application/json');
     $action = $_POST['ajax_action'];
@@ -69,7 +72,31 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
         exit();
     }
 
-    // --- Course Assignment Action (NEW) ---
+    // --- Course Management Actions (NEW) ---
+    if ($action == 'add_course') {
+        $code = $conn->real_escape_string(trim($_POST['course_code']));
+        $name = $conn->real_escape_string(trim($_POST['course_name']));
+        $sec = $conn->real_escape_string(trim($_POST['section']));
+        $day = $conn->real_escape_string($_POST['day_of_week']);
+        $time = $conn->real_escape_string($_POST['start_time']);
+        $room = $conn->real_escape_string(trim($_POST['room_no']));
+
+        if (!empty($code) && !empty($name)) {
+            $conn->query("INSERT INTO courses (course_code, course_name, section, day_of_week, start_time, room_no) VALUES ('$code', '$name', '$sec', '$day', '$time', '$room')");
+            echo json_encode(['status' => 'success', 'message' => 'New course added successfully.']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Course Code and Name are required.']);
+        }
+        exit();
+    }
+
+    if ($action == 'delete_course') {
+        $course_id = intval($_POST['course_id']);
+        $conn->query("DELETE FROM courses WHERE id = $course_id");
+        echo json_encode(['status' => 'success', 'message' => 'Course deleted successfully.']);
+        exit();
+    }
+
     if ($action == 'assign_faculty') {
         $course_id = intval($_POST['course_id']);
         $faculty_id = intval($_POST['faculty_id']);
@@ -84,6 +111,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
         exit();
     }
 
+    // --- Other Admin Actions ---
     if ($action == 'approve_item') {
         $item_id = intval($_POST['item_id']);
         $conn->query("UPDATE marketplace SET admin_approval_status = 'approved' WHERE id = $item_id");
@@ -194,6 +222,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
     }
 }
 
+// Fetch Analytics Data
 $total_users = $conn->query("SELECT COUNT(id) as c FROM users")->fetch_assoc()['c'];
 $total_posts = $conn->query("SELECT COUNT(id) as c FROM posts")->fetch_assoc()['c'];
 $pending_items = $conn->query("SELECT COUNT(id) as c FROM marketplace WHERE admin_approval_status = 'pending'")->fetch_assoc()['c'];
@@ -290,7 +319,7 @@ $active_blood_reqs = $conn->query("SELECT COUNT(id) as c FROM blood_requests WHE
     <aside class="sidebar">
         <ul class="sidebar-menu">
             <li><a onclick="switchTab('overview', this)" class="active"><i class="fa-solid fa-chart-pie"></i> Overview</a></li>
-            <li><a onclick="switchTab('courses', this)"><i class="fa-solid fa-book"></i> Assign Courses</a></li>
+            <li><a onclick="switchTab('courses', this)"><i class="fa-solid fa-book"></i> Manage Courses</a></li>
             <li><a onclick="switchTab('announcements', this)"><i class="fa-solid fa-bullhorn"></i> Announcements</a></li>
             <li><a onclick="switchTab('users', this)"><i class="fa-solid fa-users"></i> Users</a></li>
             <li><a onclick="switchTab('bloodbank', this)"><i class="fa-solid fa-droplet"></i> Blood Bank <span style="background:#10B981; color:white; padding:2px 6px; border-radius:10px; font-size:10px; margin-left:auto; <?php echo $active_blood_reqs == 0 ? 'display:none;' : ''; ?>"><?php echo $active_blood_reqs; ?></span></a></li>
@@ -346,11 +375,54 @@ $active_blood_reqs = $conn->query("SELECT COUNT(id) as c FROM blood_requests WHE
             </div>
         </div>
 
-        <!-- COURSE ASSIGNMENT SECTION (NEW) -->
+        <!-- COURSE MANAGEMENT SECTION (NEW) -->
         <div id="sec-courses" class="admin-section">
             <div class="section-header">
-                <h3><i class="fa-solid fa-book" style="color: #8B5CF6;"></i> Assign Courses to Faculty</h3>
+                <h3><i class="fa-solid fa-book" style="color: #8B5CF6;"></i> Manage & Assign Courses</h3>
             </div>
+            
+            <!-- ADD NEW COURSE FORM -->
+            <div style="padding: 24px; border-bottom: 1px solid rgba(0,0,0,0.05); background: #f8fafc;">
+                <label style="font-size: 13px; font-weight: 700; color: var(--text-main); margin-bottom: 15px; display: block;">Add New Course to Database</label>
+                <div style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 150px;">
+                        <label style="font-size: 11px; font-weight: 700; text-transform:uppercase; color: var(--text-muted);">Course Code *</label>
+                        <input type="text" id="addCourseCode" class="input-field" placeholder="e.g. CSE4165" required>
+                    </div>
+                    <div style="flex: 2; min-width: 200px;">
+                        <label style="font-size: 11px; font-weight: 700; text-transform:uppercase; color: var(--text-muted);">Course Name *</label>
+                        <input type="text" id="addCourseName" class="input-field" placeholder="e.g. Web Programming" required>
+                    </div>
+                    <div style="flex: 1; min-width: 100px;">
+                        <label style="font-size: 11px; font-weight: 700; text-transform:uppercase; color: var(--text-muted);">Section</label>
+                        <input type="text" id="addCourseSec" class="input-field" placeholder="e.g. A">
+                    </div>
+                    <div style="flex: 1; min-width: 150px;">
+                        <label style="font-size: 11px; font-weight: 700; text-transform:uppercase; color: var(--text-muted);">Day</label>
+                        <select id="addCourseDay" class="input-field">
+                            <option value="Saturday">Saturday</option>
+                            <option value="Sunday">Sunday</option>
+                            <option value="Monday">Monday</option>
+                            <option value="Tuesday">Tuesday</option>
+                            <option value="Wednesday">Wednesday</option>
+                            <option value="Thursday">Thursday</option>
+                        </select>
+                    </div>
+                    <div style="flex: 1; min-width: 120px;">
+                        <label style="font-size: 11px; font-weight: 700; text-transform:uppercase; color: var(--text-muted);">Time</label>
+                        <input type="time" id="addCourseTime" class="input-field">
+                    </div>
+                    <div style="flex: 1; min-width: 100px;">
+                        <label style="font-size: 11px; font-weight: 700; text-transform:uppercase; color: var(--text-muted);">Room</label>
+                        <input type="text" id="addCourseRoom" class="input-field" placeholder="e.g. 428">
+                    </div>
+                    <div>
+                        <button class="btn-action btn-view" style="padding: 12px 24px;" onclick="addCourse()"><i class="fa-solid fa-plus"></i> Add Course</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- COURSE LIST & FACULTY ASSIGNMENT -->
             <div style="overflow-x: auto;">
                 <table>
                     <thead>
@@ -359,6 +431,7 @@ $active_blood_reqs = $conn->query("SELECT COUNT(id) as c FROM blood_requests WHE
                             <th>Section / Room</th>
                             <th>Schedule</th>
                             <th>Assigned Faculty</th>
+                            <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -368,10 +441,10 @@ $active_blood_reqs = $conn->query("SELECT COUNT(id) as c FROM blood_requests WHE
                         $fac_res = $conn->query("SELECT id, full_name FROM users WHERE role = 'Faculty' ORDER BY full_name ASC");
                         while($f = $fac_res->fetch_assoc()) { $faculties[] = $f; }
 
-                        $courses_res = $conn->query("SELECT * FROM courses ORDER BY course_code ASC");
+                        $courses_res = $conn->query("SELECT * FROM courses ORDER BY id DESC");
                         while($c = $courses_res->fetch_assoc()):
                         ?>
-                        <tr>
+                        <tr id="course-row-<?php echo $c['id']; ?>">
                             <td>
                                 <strong style="display:block; font-size: 15px; color: var(--text-main);"><?php echo htmlspecialchars($c['course_code']); ?></strong>
                                 <span style="font-size: 13px; color: var(--text-muted);"><?php echo htmlspecialchars($c['course_name']); ?></span>
@@ -390,6 +463,9 @@ $active_blood_reqs = $conn->query("SELECT COUNT(id) as c FROM blood_requests WHE
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
+                            </td>
+                            <td>
+                                <button class="btn-action btn-reject" onclick="deleteCourse(<?php echo $c['id']; ?>)" title="Delete Course"><i class="fa-solid fa-trash"></i></button>
                             </td>
                         </tr>
                         <?php endwhile; ?>
@@ -841,6 +917,58 @@ $active_blood_reqs = $conn->query("SELECT COUNT(id) as c FROM blood_requests WHE
             if(data.status === 'success') {
                 document.getElementById('adminOldPass').value = '';
                 document.getElementById('adminNewPass').value = '';
+            }
+        });
+    }
+
+    // --- Course Management Script ---
+    function addCourse() {
+        let code = document.getElementById('addCourseCode').value.trim();
+        let name = document.getElementById('addCourseName').value.trim();
+        let sec = document.getElementById('addCourseSec').value.trim();
+        let day = document.getElementById('addCourseDay').value;
+        let time = document.getElementById('addCourseTime').value;
+        let room = document.getElementById('addCourseRoom').value.trim();
+
+        if(code === '' || name === '') {
+            showToast("Course Code and Name are required!", true);
+            return;
+        }
+
+        let fd = new FormData();
+        fd.append('ajax_action', 'add_course');
+        fd.append('course_code', code);
+        fd.append('course_name', name);
+        fd.append('section', sec);
+        fd.append('day_of_week', day);
+        fd.append('start_time', time);
+        fd.append('room_no', room);
+
+        fetch('dashboard_2.php', { method: 'POST', body: fd })
+        .then(r=>r.json())
+        .then(data => {
+            if(data.status === 'success') {
+                showToast(data.message);
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast(data.message, true);
+            }
+        });
+    }
+
+    function deleteCourse(courseId) {
+        if(!confirm("Are you sure you want to delete this course? This will remove all materials and assignments attached to it.")) return;
+        
+        let fd = new FormData();
+        fd.append('ajax_action', 'delete_course');
+        fd.append('course_id', courseId);
+
+        fetch('dashboard_2.php', { method: 'POST', body: fd })
+        .then(r=>r.json())
+        .then(data => {
+            if(data.status === 'success') {
+                document.getElementById('course-row-' + courseId).remove();
+                showToast(data.message);
             }
         });
     }
