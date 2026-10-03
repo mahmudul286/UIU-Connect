@@ -39,6 +39,7 @@ include 'includes/sidebar.php';
     .badge-comment { background: #10B981; }
     .badge-connection { background: #3B82F6; }
     .badge-announcement { background: #F59E0B; }
+    .badge-appointment { background: #8B5CF6; } 
 </style>
 
 <main class="notif-container">
@@ -74,6 +75,25 @@ include 'includes/sidebar.php';
                         $icon_html = '<div class="notif-badge badge-connection"><i class="fa-solid fa-user-plus" style="font-size: 10px;"></i></div>';
                         $message = "<strong>" . htmlspecialchars($row['full_name']) . "</strong> sent you a connection request.";
                         $link = "profile.php?id=" . $row['sender_id'];
+                        break;
+                    case 'appointment': 
+                        $icon_html = '<div class="notif-badge badge-appointment"><i class="fa-solid fa-calendar-check" style="font-size: 10px;"></i></div>';
+                        
+                        // FIX: Change message dynamically based on if it's sent to a student or faculty
+                        $appt_sql = $conn->query("SELECT status FROM appointments WHERE id = " . $row['reference_id']);
+                        $appt_status = ($appt_sql && $appt_sql->num_rows > 0) ? $appt_sql->fetch_assoc()['status'] : 'updated';
+                        
+                        $sender_role_sql = $conn->query("SELECT role FROM users WHERE id = " . $row['sender_id']);
+                        $sender_role = ($sender_role_sql && $sender_role_sql->num_rows > 0) ? $sender_role_sql->fetch_assoc()['role'] : '';
+
+                        if ($sender_role === 'Faculty') {
+                            $status_color = ($appt_status == 'Approved') ? '#10B981' : '#EF4444';
+                            $message = "<strong>" . htmlspecialchars($row['full_name']) . "</strong> marked your counseling request as <strong style='color:$status_color;'>$appt_status</strong>.";
+                        } else {
+                            $message = "<strong>" . htmlspecialchars($row['full_name']) . "</strong> requested a counseling session.";
+                        }
+                        
+                        $link = "counseling.php";
                         break;
                     default:
                         $icon_html = '<div class="notif-badge badge-announcement"><i class="fa-solid fa-bullhorn" style="font-size: 10px;"></i></div>';

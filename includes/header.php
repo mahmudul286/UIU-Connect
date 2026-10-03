@@ -7,8 +7,8 @@ $user_id = $_SESSION['user_id'];
 $header_user_res = $conn->query("SELECT profile_pic FROM users WHERE id = $user_id");
 $header_profile_pic = ($header_user_res && $header_user_res->num_rows > 0) ? $header_user_res->fetch_assoc()['profile_pic'] : null;
 
-// FIX: Added 'connection' to the notification count query so the red badge updates properly
-$unread_notifs = $conn->query("SELECT COUNT(id) as c FROM notifications WHERE user_id = $user_id AND is_read = 0 AND type IN ('like', 'comment', 'announcement', 'connection')")->fetch_assoc()['c'];
+// FIX: Added 'appointment' so the red badge alerts the faculty immediately
+$unread_notifs = $conn->query("SELECT COUNT(id) as c FROM notifications WHERE user_id = $user_id AND is_read = 0 AND type IN ('like', 'comment', 'announcement', 'connection', 'appointment')")->fetch_assoc()['c'];
 
 // 2. Message Badge 
 $unread_msgs = $conn->query("SELECT COUNT(id) as c FROM messages WHERE receiver_id = $user_id AND is_read = 0")->fetch_assoc()['c'];
