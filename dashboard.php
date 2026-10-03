@@ -239,7 +239,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
     }
 }
 
-
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['post_content']) && !isset($_POST['ajax_action'])) {
     $content = $conn->real_escape_string($_POST['post_content']);
     $post_type = (isset($_POST['is_announcement']) && ($user_role === 'Admin' || $user_role === 'Faculty')) ? 'Announcement' : 'General';
@@ -287,10 +286,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['post_content']) && !is
     header("Location: dashboard.php"); exit();
 }
 
-
+// FIX: Added deletion of old enrollments before inserting new ones so users can re-sync easily.
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ocr_sync_complete'])) {
     $extracted_text = $_POST['extracted_courses']; 
     if (!empty($extracted_text)) {
+        // Remove old enrollments for fresh sync
+        $conn->query("DELETE FROM enrollments WHERE student_id = $user_id");
+
         $course_codes = explode(',', $extracted_text);
         foreach($course_codes as $code) {
             $clean_code = preg_replace('/\s+/', '', strtoupper(trim($code))); 
@@ -306,7 +308,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ocr_sync_complete'])) 
         }
     }
     $_SESSION['setup_bypassed'] = true; 
-    header("Location: dashboard.php"); exit();
+    header("Location: dashboard.php?msg=synced"); exit();
 }
 
 $has_enrollments = true;
@@ -333,9 +335,18 @@ include 'includes/sidebar.php';
     <span id="toastText">Action successful</span>
 </div>
 
-<?php if (!$has_enrollments && $user_role === 'Student'): ?>
-<div class="modal-overlay" id="setupModal" style="display: <?php echo $show_setup_popup ? 'flex' : 'none'; ?>;">
-    <div class="modal-content" id="modalStep1" style="text-align: center;">
+<!-- FIX: Made modal always available for Students to allow manual re-sync -->
+<?php if ($user_role === 'Student'): ?>
+<div class="modal-overlay" id="setupModal" style="display: <?php echo (!$has_enrollments && $show_setup_popup) ? 'flex' : 'none'; ?>;">
+    <div class="modal-content" id="modalStep1" style="text-align: center; position: relative;">
+        
+        <?php if($has_enrollments): ?>
+        <!-- Close button if opened manually -->
+        <button style="position: absolute; right: 15px; top: 15px; background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted);" onclick="document.getElementById('setupModal').style.display='none'">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+        <?php endif; ?>
+
         <h2 style="font-size: 24px; color: var(--text-main); margin-bottom: 10px; display:flex; align-items:center; justify-content: center; gap:8px;">
             <i class="fa-solid fa-bolt" style="color:var(--uiu-orange); font-size: 24px;"></i>
             Sync Your Trimester
@@ -348,7 +359,10 @@ include 'includes/sidebar.php';
             <p style="font-size: 13px; color: var(--text-muted);">Supports PNG, JPG</p>
             <input type="file" id="routineUpload" style="display: none;" accept="image/*" onchange="startRealOCR(event)">
         </div>
-        <button onclick="skipSetup()" style="background: none; border: none; color: var(--text-muted); font-size: 13px; cursor: pointer; text-decoration: underline;">Skip for now</button>
+        
+        <?php if(!$has_enrollments): ?>
+            <button onclick="skipSetup()" style="background: none; border: none; color: var(--text-muted); font-size: 13px; cursor: pointer; text-decoration: underline;">Skip for now</button>
+        <?php endif; ?>
     </div>
 
     <div class="modal-content" id="modalStep2" style="display: none; text-align: center;">
@@ -713,10 +727,19 @@ include 'includes/sidebar.php';
             ?>
         </div>
 
-  <div class="card" style="margin-bottom: 24px;">
-            <h4 style="font-size: 15px; font-weight: 600; color: var(--text-main); margin-bottom: 16px;">
-                <?php echo ($user_role === 'Faculty') ? 'Today\'s Schedule' : 'My Classes'; ?>
-            </h4>
+        <div class="card" style="margin-bottom: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h4 style="font-size: 15px; font-weight: 600; color: var(--text-main);">
+                    <?php echo ($user_role === 'Faculty') ? 'Today\'s Schedule' : 'My Classes'; ?>
+                </h4>
+                <?php if($user_role === 'Student'): ?>
+                <!-- FIX: Added Re-sync Button for Students -->
+                <button onclick="document.getElementById('setupModal').style.display='flex'" style="background:none; border:none; color:var(--uiu-orange); font-size:12px; font-weight:600; cursor:pointer;">
+                    <i class="fa-solid fa-rotate"></i> Re-sync
+                </button>
+                <?php endif; ?>
+            </div>
+            
             <div style="padding-left: 10px; border-left: 2px solid var(--border-light);">
                 <?php
                 if ($user_role === 'Student' && $has_enrollments) {
@@ -978,7 +1001,7 @@ include 'includes/sidebar.php';
         document.getElementById('ocrForm').submit();
     }
 
-function startRealOCR(event) {
+    function startRealOCR(event) {
         const file = event.target.files[0];
         if (!file) return;
 
@@ -1003,7 +1026,7 @@ function startRealOCR(event) {
         ).then(({ data: { text } }) => {
             logDiv.innerText = 'Processing text...';
             
-            const regex = /[A-Z]{3}\s*\d{3,4}/gi;
+            const regex = /(CSE|EEE|BBA|ECO|MAT|ENG|PHY|CHE|ACT|INT)\s*\d{3,4}/gi;
             let matches = text.match(regex);
             
             if (matches && matches.length > 0) {
@@ -1025,6 +1048,14 @@ function startRealOCR(event) {
                 document.getElementById('ocrForm').submit();
             }, 1500);
         });
+    }
+
+    // Checking for URL params to trigger toasts
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('msg')) {
+        let msg = urlParams.get('msg');
+        if (msg === 'synced') showToast("Routine synced successfully!");
+        window.history.replaceState(null, null, window.location.pathname);
     }
 </script>
 
