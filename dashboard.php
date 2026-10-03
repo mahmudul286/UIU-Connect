@@ -713,44 +713,53 @@ include 'includes/sidebar.php';
             ?>
         </div>
 
-        <div class="card" style="margin-bottom: 24px;">
+  <div class="card" style="margin-bottom: 24px;">
             <h4 style="font-size: 15px; font-weight: 600; color: var(--text-main); margin-bottom: 16px;">
                 <?php echo ($user_role === 'Faculty') ? 'Today\'s Schedule' : 'My Classes'; ?>
             </h4>
             <div style="padding-left: 10px; border-left: 2px solid var(--border-light);">
                 <?php
                 if ($user_role === 'Student' && $has_enrollments) {
-                    $routine_sql = "SELECT c.course_code, c.course_name, c.room_no, c.start_time FROM enrollments e JOIN courses c ON e.course_id = c.id WHERE e.student_id = $user_id AND c.day_of_week = '$today_day' ORDER BY c.start_time ASC";
+                    $routine_sql = "SELECT c.course_code, c.course_name, c.room_no, c.start_time, c.end_time FROM enrollments e JOIN courses c ON e.course_id = c.id WHERE e.student_id = $user_id AND c.day_of_week = '$today_day' ORDER BY c.start_time ASC";
                     $res = $conn->query($routine_sql);
                     if ($res && $res->num_rows > 0) {
                         echo '<strong style="font-size: 12px; color: var(--uiu-orange); text-transform: uppercase; margin-bottom: 8px; display:block;">Today</strong>';
                         while($class = $res->fetch_assoc()) {
+                            $time_str = date('h:i A', strtotime($class['start_time']));
+                            if($class['end_time']) $time_str .= ' - ' . date('h:i A', strtotime($class['end_time']));
+                            
                             echo '<div class="timeline-item">
                                     <p style="font-size: 14px; font-weight: 600; color: var(--text-main);">'.$class['course_code'].' - '.$class['course_name'].'</p>
-                                    <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">'.date('h:i A', strtotime($class['start_time'])).' • Room '.$class['room_no'].'</p>
+                                    <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">'.$time_str.' • Room '.$class['room_no'].'</p>
                                   </div>';
                         }
                     } else { echo '<p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;">No classes today.</p>'; }
                     
-                    $routine_sql_tmr = "SELECT c.course_code, c.course_name, c.room_no, c.start_time FROM enrollments e JOIN courses c ON e.course_id = c.id WHERE e.student_id = $user_id AND c.day_of_week = '$tomorrow_day' ORDER BY c.start_time ASC";
+                    $routine_sql_tmr = "SELECT c.course_code, c.course_name, c.room_no, c.start_time, c.end_time FROM enrollments e JOIN courses c ON e.course_id = c.id WHERE e.student_id = $user_id AND c.day_of_week = '$tomorrow_day' ORDER BY c.start_time ASC";
                     $res_tmr = $conn->query($routine_sql_tmr);
                     if ($res_tmr && $res_tmr->num_rows > 0) {
                         echo '<strong style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; margin-top: 10px; margin-bottom: 8px; display:block;">Upcoming (Tomorrow)</strong>';
                         while($class = $res_tmr->fetch_assoc()) {
+                            $time_str = date('h:i A', strtotime($class['start_time']));
+                            if($class['end_time']) $time_str .= ' - ' . date('h:i A', strtotime($class['end_time']));
+                            
                             echo '<div class="timeline-item" style="opacity: 0.8;">
                                     <p style="font-size: 14px; font-weight: 600; color: var(--text-main);">'.$class['course_code'].' - '.$class['course_name'].'</p>
-                                    <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">'.date('h:i A', strtotime($class['start_time'])).' • Room '.$class['room_no'].'</p>
+                                    <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">'.$time_str.' • Room '.$class['room_no'].'</p>
                                   </div>';
                         }
                     }
                 } elseif ($user_role === 'Faculty') {
-                    $routine_sql = "SELECT course_code, course_name, room_no, start_time FROM courses WHERE faculty_id = $user_id AND day_of_week = '$today_day' ORDER BY start_time ASC";
+                    $routine_sql = "SELECT course_code, course_name, room_no, start_time, end_time FROM courses WHERE faculty_id = $user_id AND day_of_week = '$today_day' ORDER BY start_time ASC";
                     $res = $conn->query($routine_sql);
                     if ($res && $res->num_rows > 0) {
                         while($class = $res->fetch_assoc()) {
+                            $time_str = date('h:i A', strtotime($class['start_time']));
+                            if($class['end_time']) $time_str .= ' - ' . date('h:i A', strtotime($class['end_time']));
+                            
                             echo '<div class="timeline-item">
                                     <p style="font-size: 14px; font-weight: 600; color: var(--text-main);">'.$class['course_code'].' - '.$class['course_name'].'</p>
-                                    <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">'.date('h:i A', strtotime($class['start_time'])).' • Room '.$class['room_no'].'</p>
+                                    <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">'.$time_str.' • Room '.$class['room_no'].'</p>
                                   </div>';
                         }
                     } else { echo '<p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;">No classes scheduled for today.</p>'; }

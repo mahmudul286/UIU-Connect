@@ -3,7 +3,7 @@ require_once 'includes/db_connect.php';
 
 if (isset($_SESSION['user_id'])) {
     if (isset($_SESSION['role']) && $_SESSION['role'] === 'Admin') {
-        header("Location: admin/dashboard.php");
+        header("Location: admin/admin_dashboard.php");
     } else {
         header("Location: dashboard.php");
     }
@@ -29,7 +29,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $_SESSION['department'] = $user['department'];
             
             if ($user['role'] === 'Admin') {
-                header("Location: admin/dashboard.php");
+                header("Location: admin/admin_dashboard.php");
             } else {
                 header("Location: dashboard.php");
             }

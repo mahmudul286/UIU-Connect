@@ -1,6 +1,9 @@
 <?php
 require_once '../includes/db_connect.php';
 
+// Auto-add end_time column to the courses table if it doesn't exist
+$conn->query("ALTER TABLE courses ADD COLUMN IF NOT EXISTS end_time TIME DEFAULT NULL AFTER start_time");
+
 // Check if user is logged in and is an Admin
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'Admin') {
     header("Location: ../dashboard.php");
@@ -72,18 +75,53 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
         exit();
     }
 
-    // --- Course Management Actions (NEW) ---
+    // --- Course Management Actions ---
     if ($action == 'add_course') {
         $code = $conn->real_escape_string(trim($_POST['course_code']));
         $name = $conn->real_escape_string(trim($_POST['course_name']));
         $sec = $conn->real_escape_string(trim($_POST['section']));
         $day = $conn->real_escape_string($_POST['day_of_week']);
-        $time = $conn->real_escape_string($_POST['start_time']);
+        $start_time = trim($_POST['start_time']);
+        $end_time = trim($_POST['end_time']);
         $room = $conn->real_escape_string(trim($_POST['room_no']));
 
         if (!empty($code) && !empty($name)) {
-            $conn->query("INSERT INTO courses (course_code, course_name, section, day_of_week, start_time, room_no) VALUES ('$code', '$name', '$sec', '$day', '$time', '$room')");
-            echo json_encode(['status' => 'success', 'message' => 'New course added successfully.']);
+            $st_val = !empty($start_time) ? "'" . $conn->real_escape_string($start_time) . "'" : "NULL";
+            $et_val = !empty($end_time) ? "'" . $conn->real_escape_string($end_time) . "'" : "NULL";
+            
+            $sql = "INSERT INTO courses (course_code, course_name, section, day_of_week, start_time, end_time, room_no) VALUES ('$code', '$name', '$sec', '$day', $st_val, $et_val, '$room')";
+            if ($conn->query($sql)) {
+                echo json_encode(['status' => 'success', 'message' => 'New course added successfully.']);
+            } else {
+                echo json_encode(['status' => 'error', 'message' => 'DB Error: ' . $conn->error]);
+            }
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Course Code and Name are required.']);
+        }
+        exit();
+    }
+
+    // Edit Course Action (NEW)
+    if ($action == 'edit_course') {
+        $id = intval($_POST['course_id']);
+        $code = $conn->real_escape_string(trim($_POST['course_code']));
+        $name = $conn->real_escape_string(trim($_POST['course_name']));
+        $sec = $conn->real_escape_string(trim($_POST['section']));
+        $day = $conn->real_escape_string($_POST['day_of_week']);
+        $start_time = trim($_POST['start_time']);
+        $end_time = trim($_POST['end_time']);
+        $room = $conn->real_escape_string(trim($_POST['room_no']));
+
+        if (!empty($code) && !empty($name)) {
+            $st_val = !empty($start_time) ? "'" . $conn->real_escape_string($start_time) . "'" : "NULL";
+            $et_val = !empty($end_time) ? "'" . $conn->real_escape_string($end_time) . "'" : "NULL";
+            
+            $sql = "UPDATE courses SET course_code='$code', course_name='$name', section='$sec', day_of_week='$day', start_time=$st_val, end_time=$et_val, room_no='$room' WHERE id=$id";
+            if ($conn->query($sql)) {
+                echo json_encode(['status' => 'success', 'message' => 'Course updated successfully.']);
+            } else {
+                echo json_encode(['status' => 'error', 'message' => 'DB Error: ' . $conn->error]);
+            }
         } else {
             echo json_encode(['status' => 'error', 'message' => 'Course Code and Name are required.']);
         }
@@ -92,8 +130,25 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
 
     if ($action == 'delete_course') {
         $course_id = intval($_POST['course_id']);
-        $conn->query("DELETE FROM courses WHERE id = $course_id");
-        echo json_encode(['status' => 'success', 'message' => 'Course deleted successfully.']);
+        
+        $conn->query("DELETE FROM enrollments WHERE course_id = $course_id");
+        $conn->query("DELETE FROM tasks WHERE course_id = $course_id");
+        
+        $mat_res = $conn->query("SELECT file_path FROM course_materials WHERE course_id = $course_id");
+        if($mat_res) {
+            while($mat = $mat_res->fetch_assoc()) {
+                if(!empty($mat['file_path']) && file_exists('../' . $mat['file_path'])) {
+                    unlink('../' . $mat['file_path']);
+                }
+            }
+            $conn->query("DELETE FROM course_materials WHERE course_id = $course_id");
+        }
+
+        if ($conn->query("DELETE FROM courses WHERE id = $course_id")) {
+            echo json_encode(['status' => 'success', 'message' => 'Course deleted successfully.']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Failed to delete: ' . $conn->error]);
+        }
         exit();
     }
 
@@ -105,8 +160,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
             $conn->query("UPDATE courses SET faculty_id = NULL WHERE id = $course_id");
             echo json_encode(['status' => 'success', 'message' => 'Faculty unassigned from course.']);
         } else {
-            $conn->query("UPDATE courses SET faculty_id = $faculty_id WHERE id = $course_id");
-            echo json_encode(['status' => 'success', 'message' => 'Course successfully assigned to Faculty.']);
+            if ($conn->query("UPDATE courses SET faculty_id = $faculty_id WHERE id = $course_id")) {
+                echo json_encode(['status' => 'success', 'message' => 'Course assigned to Faculty.']);
+            } else {
+                echo json_encode(['status' => 'error', 'message' => 'Failed: ' . $conn->error]);
+            }
         }
         exit();
     }
@@ -209,7 +267,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
         if ($target_user !== $user_id) { 
             $conn->query("DELETE FROM users WHERE id = $target_user");
         }
-        echo json_encode(['status' => 'success']); exit();
+        echo json_encode(['status' => 'success', 'message' => 'User deleted completely.']); exit();
     }
 
     if ($action == 'change_role') {
@@ -218,7 +276,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
         if ($target_user !== $user_id && in_array($new_role, ['Student', 'Faculty', 'Admin'])) {
             $conn->query("UPDATE users SET role = '$new_role' WHERE id = $target_user");
         }
-        echo json_encode(['status' => 'success']); exit();
+        echo json_encode(['status' => 'success', 'message' => "User role updated to $new_role."]); exit();
     }
 }
 
@@ -277,7 +335,7 @@ $active_blood_reqs = $conn->query("SELECT COUNT(id) as c FROM blood_requests WHE
         .sidebar-menu a:hover, .sidebar-menu a.active { background: var(--uiu-orange-light); color: var(--uiu-orange); transform: translateX(5px); }
         .sidebar-menu a i { font-size: 18px; width: 24px; text-align: center; }
 
-        .input-field { width: 100%; padding: 12px 16px; border: 1px solid rgba(0,0,0,0.1); border-radius: 10px; font-size: 14px; margin-top: 8px; box-sizing: border-box; background: #f8fafc; transition: 0.2s; outline: none; }
+        .input-field { width: 100%; padding: 12px 16px; border: 1px solid rgba(0,0,0,0.1); border-radius: 10px; font-size: 14px; box-sizing: border-box; background: #f8fafc; transition: 0.2s; outline: none; }
         .input-field:focus { background: #fff; border-color: var(--uiu-orange); box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1); }
         .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
 
@@ -314,11 +372,81 @@ $active_blood_reqs = $conn->query("SELECT COUNT(id) as c FROM blood_requests WHE
     <span id="toastText">Action successful</span>
 </div>
 
+<!-- CUSTOM CONFIRM MODAL -->
+<div id="adminConfirmModal" class="modal-overlay" style="display:none; align-items:center; justify-content:center; z-index:9999;">
+    <div class="modal-content" style="max-width: 400px; text-align: center; padding: 30px; background: #fff; border-radius: 12px; animation: fadeIn 0.2s ease;">
+        <i id="confirmModalIcon" class="fa-solid fa-triangle-exclamation" style="color: #EF4444; font-size: 48px; margin-bottom: 15px;"></i>
+        <h3 id="confirmModalTitle" style="font-size:18px; color: var(--text-main); margin-bottom: 10px;">Are you sure?</h3>
+        <p id="confirmModalText" style="font-size: 14px; color: var(--text-muted); margin-bottom: 25px;">This action cannot be undone.</p>
+        <div style="display:flex; gap:10px; justify-content: center;">
+            <button onclick="closeConfirmModal()" style="padding: 10px 24px; border: 1px solid var(--border-light); background: #fff; border-radius: 8px; cursor: pointer; font-weight: 600; color: var(--text-main);">Cancel</button>
+            <button id="confirmModalActionBtn" style="padding: 10px 24px; border: none; background: #EF4444; color: white; border-radius: 8px; cursor: pointer; font-weight: 600;">Yes, Proceed</button>
+        </div>
+    </div>
+</div>
+
+<!-- EDIT COURSE MODAL (NEW) -->
+<div id="editCourseModal" class="modal-overlay" style="display:none; align-items:center; justify-content:center; z-index:9999;">
+    <div class="modal-content" style="max-width: 500px; padding: 30px; background: #fff; border-radius: 12px; animation: fadeIn 0.2s ease;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid var(--border-light); padding-bottom:12px;">
+            <h3 style="font-size:18px; color: var(--text-main); margin:0;">Edit Course</h3>
+            <button style="background:none; border:none; cursor:pointer; color:var(--text-muted);" onclick="closeEditCourseModal()">
+                <i class="fa-solid fa-xmark" style="font-size: 20px;"></i>
+            </button>
+        </div>
+        <input type="hidden" id="editCourseId">
+        <div style="display:flex; flex-direction:column; gap:12px;">
+            <div>
+                <label style="font-size: 11px; font-weight: 700; text-transform:uppercase; color: var(--text-muted);">Course Code *</label>
+                <input type="text" id="editCourseCode" class="input-field" required>
+            </div>
+            <div>
+                <label style="font-size: 11px; font-weight: 700; text-transform:uppercase; color: var(--text-muted);">Course Name *</label>
+                <input type="text" id="editCourseName" class="input-field" required>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <div style="flex:1;">
+                    <label style="font-size: 11px; font-weight: 700; text-transform:uppercase; color: var(--text-muted);">Section</label>
+                    <input type="text" id="editCourseSec" class="input-field">
+                </div>
+                <div style="flex:1;">
+                    <label style="font-size: 11px; font-weight: 700; text-transform:uppercase; color: var(--text-muted);">Room</label>
+                    <input type="text" id="editCourseRoom" class="input-field">
+                </div>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <div style="flex:1;">
+                    <label style="font-size: 11px; font-weight: 700; text-transform:uppercase; color: var(--text-muted);">Day</label>
+                    <select id="editCourseDay" class="input-field">
+                        <option value="Saturday">Saturday</option>
+                        <option value="Sunday">Sunday</option>
+                        <option value="Monday">Monday</option>
+                        <option value="Tuesday">Tuesday</option>
+                        <option value="Wednesday">Wednesday</option>
+                        <option value="Thursday">Thursday</option>
+                    </select>
+                </div>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <div style="flex:1;">
+                    <label style="font-size: 11px; font-weight: 700; text-transform:uppercase; color: var(--text-muted);">Start Time</label>
+                    <input type="time" id="editCourseStartTime" class="input-field">
+                </div>
+                <div style="flex:1;">
+                    <label style="font-size: 11px; font-weight: 700; text-transform:uppercase; color: var(--text-muted);">End Time</label>
+                    <input type="time" id="editCourseEndTime" class="input-field">
+                </div>
+            </div>
+            <button class="btn-primary" style="width:100%; margin-top:10px; padding:12px;" onclick="submitEditCourse()">Save Changes</button>
+        </div>
+    </div>
+</div>
+
 <div class="layout-wrapper" style="max-width: 1400px;">
     <!-- Left Sidebar -->
     <aside class="sidebar">
         <ul class="sidebar-menu">
-            <li><a onclick="switchTab('overview', this)" class="active"><i class="fa-solid fa-chart-pie"></i> Overview</a></li>
+            <li><a onclick="switchTab('overview', this)"><i class="fa-solid fa-chart-pie"></i> Overview</a></li>
             <li><a onclick="switchTab('courses', this)"><i class="fa-solid fa-book"></i> Manage Courses</a></li>
             <li><a onclick="switchTab('announcements', this)"><i class="fa-solid fa-bullhorn"></i> Announcements</a></li>
             <li><a onclick="switchTab('users', this)"><i class="fa-solid fa-users"></i> Users</a></li>
@@ -335,7 +463,6 @@ $active_blood_reqs = $conn->query("SELECT COUNT(id) as c FROM blood_requests WHE
         </ul>
     </aside>
 
-    <!-- Main Admin Content Area -->
     <main class="admin-content">
         
         <!-- OVERVIEW SECTION -->
@@ -375,31 +502,34 @@ $active_blood_reqs = $conn->query("SELECT COUNT(id) as c FROM blood_requests WHE
             </div>
         </div>
 
-        <!-- COURSE MANAGEMENT SECTION (NEW) -->
+        <!-- COURSE MANAGEMENT SECTION -->
         <div id="sec-courses" class="admin-section">
             <div class="section-header">
                 <h3><i class="fa-solid fa-book" style="color: #8B5CF6;"></i> Manage & Assign Courses</h3>
             </div>
             
-            <!-- ADD NEW COURSE FORM -->
             <div style="padding: 24px; border-bottom: 1px solid rgba(0,0,0,0.05); background: #f8fafc;">
                 <label style="font-size: 13px; font-weight: 700; color: var(--text-main); margin-bottom: 15px; display: block;">Add New Course to Database</label>
                 <div style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
-                    <div style="flex: 1; min-width: 150px;">
-                        <label style="font-size: 11px; font-weight: 700; text-transform:uppercase; color: var(--text-muted);">Course Code *</label>
-                        <input type="text" id="addCourseCode" class="input-field" placeholder="e.g. CSE4165" required>
+                    <div style="flex: 1; min-width: 120px;">
+                        <label style="font-size: 11px; font-weight: 700; text-transform:uppercase; color: var(--text-muted); margin-bottom:6px; display:block;">Code *</label>
+                        <input type="text" id="addCourseCode" class="input-field" placeholder="e.g. CSE4165" style="margin-top:0;" required>
                     </div>
-                    <div style="flex: 2; min-width: 200px;">
-                        <label style="font-size: 11px; font-weight: 700; text-transform:uppercase; color: var(--text-muted);">Course Name *</label>
-                        <input type="text" id="addCourseName" class="input-field" placeholder="e.g. Web Programming" required>
+                    <div style="flex: 2; min-width: 180px;">
+                        <label style="font-size: 11px; font-weight: 700; text-transform:uppercase; color: var(--text-muted); margin-bottom:6px; display:block;">Name *</label>
+                        <input type="text" id="addCourseName" class="input-field" placeholder="e.g. Web Programming" style="margin-top:0;" required>
+                    </div>
+                    <div style="flex: 1; min-width: 80px;">
+                        <label style="font-size: 11px; font-weight: 700; text-transform:uppercase; color: var(--text-muted); margin-bottom:6px; display:block;">Section</label>
+                        <input type="text" id="addCourseSec" class="input-field" placeholder="e.g. A" style="margin-top:0;">
                     </div>
                     <div style="flex: 1; min-width: 100px;">
-                        <label style="font-size: 11px; font-weight: 700; text-transform:uppercase; color: var(--text-muted);">Section</label>
-                        <input type="text" id="addCourseSec" class="input-field" placeholder="e.g. A">
+                        <label style="font-size: 11px; font-weight: 700; text-transform:uppercase; color: var(--text-muted); margin-bottom:6px; display:block;">Room</label>
+                        <input type="text" id="addCourseRoom" class="input-field" placeholder="e.g. 428" style="margin-top:0;">
                     </div>
-                    <div style="flex: 1; min-width: 150px;">
-                        <label style="font-size: 11px; font-weight: 700; text-transform:uppercase; color: var(--text-muted);">Day</label>
-                        <select id="addCourseDay" class="input-field">
+                    <div style="flex: 1; min-width: 130px;">
+                        <label style="font-size: 11px; font-weight: 700; text-transform:uppercase; color: var(--text-muted); margin-bottom:6px; display:block;">Day</label>
+                        <select id="addCourseDay" class="input-field" style="margin-top:0;">
                             <option value="Saturday">Saturday</option>
                             <option value="Sunday">Sunday</option>
                             <option value="Monday">Monday</option>
@@ -408,41 +538,48 @@ $active_blood_reqs = $conn->query("SELECT COUNT(id) as c FROM blood_requests WHE
                             <option value="Thursday">Thursday</option>
                         </select>
                     </div>
-                    <div style="flex: 1; min-width: 120px;">
-                        <label style="font-size: 11px; font-weight: 700; text-transform:uppercase; color: var(--text-muted);">Time</label>
-                        <input type="time" id="addCourseTime" class="input-field">
+                    <div style="flex: 2; min-width: 250px;">
+                        <label style="font-size: 11px; font-weight: 700; text-transform:uppercase; color: var(--text-muted); margin-bottom:6px; display:block;">Duration (Start - End)</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="time" id="addCourseStartTime" class="input-field" style="margin-top:0; padding: 10px;">
+                            <span style="font-weight: 800; color: var(--text-muted);">-</span>
+                            <input type="time" id="addCourseEndTime" class="input-field" style="margin-top:0; padding: 10px;">
+                        </div>
                     </div>
-                    <div style="flex: 1; min-width: 100px;">
-                        <label style="font-size: 11px; font-weight: 700; text-transform:uppercase; color: var(--text-muted);">Room</label>
-                        <input type="text" id="addCourseRoom" class="input-field" placeholder="e.g. 428">
-                    </div>
+                    
                     <div>
-                        <button class="btn-action btn-view" style="padding: 12px 24px;" onclick="addCourse()"><i class="fa-solid fa-plus"></i> Add Course</button>
+                        <button class="btn-action btn-view" style="padding: 12px 24px;" onclick="addCourse()"><i class="fa-solid fa-plus"></i> Add</button>
                     </div>
                 </div>
             </div>
 
-            <!-- COURSE LIST & FACULTY ASSIGNMENT -->
             <div style="overflow-x: auto;">
                 <table>
                     <thead>
                         <tr>
-                            <th>Course Code & Name</th>
+                            <th>Course Details</th>
                             <th>Section / Room</th>
-                            <th>Schedule</th>
+                            <th>Class Schedule</th>
                             <th>Assigned Faculty</th>
                             <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php
-                        // Get all faculties to populate the dropdown
                         $faculties = [];
                         $fac_res = $conn->query("SELECT id, full_name FROM users WHERE role = 'Faculty' ORDER BY full_name ASC");
                         while($f = $fac_res->fetch_assoc()) { $faculties[] = $f; }
 
                         $courses_res = $conn->query("SELECT * FROM courses ORDER BY id DESC");
                         while($c = $courses_res->fetch_assoc()):
+                            
+                            $time_str = 'N/A';
+                            if ($c['start_time']) {
+                                $time_str = date('h:i A', strtotime($c['start_time']));
+                                if ($c['end_time']) {
+                                    $time_str .= ' - ' . date('h:i A', strtotime($c['end_time']));
+                                }
+                            }
                         ?>
                         <tr id="course-row-<?php echo $c['id']; ?>">
                             <td>
@@ -453,7 +590,10 @@ $active_blood_reqs = $conn->query("SELECT COUNT(id) as c FROM blood_requests WHE
                                 <span class="badge" style="background: #E2E8F0; color: #475569;">Sec: <?php echo htmlspecialchars($c['section'] ?? 'N/A'); ?></span><br>
                                 <small style="color: var(--text-muted); margin-top:5px; display:inline-block;">Room: <?php echo htmlspecialchars($c['room_no'] ?? 'N/A'); ?></small>
                             </td>
-                            <td><span style="font-size:13px; color:var(--text-main); font-weight:600;"><?php echo htmlspecialchars($c['day_of_week']); ?></span><br><small style="color:var(--text-muted);"><?php echo $c['start_time'] ? date('h:i A', strtotime($c['start_time'])) : 'N/A'; ?></small></td>
+                            <td>
+                                <span style="font-size:13px; color:var(--text-main); font-weight:600;"><?php echo htmlspecialchars($c['day_of_week']); ?></span><br>
+                                <small style="color:var(--text-muted);"><?php echo $time_str; ?></small>
+                            </td>
                             <td>
                                 <select onchange="assignFaculty(<?php echo $c['id']; ?>, this.value)" style="padding: 8px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1); font-size: 13px; font-weight: 600; outline:none; background: #fff; width: 100%; max-width: 200px;">
                                     <option value="0">-- Not Assigned --</option>
@@ -465,7 +605,10 @@ $active_blood_reqs = $conn->query("SELECT COUNT(id) as c FROM blood_requests WHE
                                 </select>
                             </td>
                             <td>
-                                <button class="btn-action btn-reject" onclick="deleteCourse(<?php echo $c['id']; ?>)" title="Delete Course"><i class="fa-solid fa-trash"></i></button>
+                                <div style="display:flex; gap:8px;">
+                                    <button class="btn-action btn-view" onclick="openEditCourseModal(<?php echo $c['id']; ?>, '<?php echo addslashes($c['course_code']); ?>', '<?php echo addslashes($c['course_name']); ?>', '<?php echo addslashes($c['section'] ?? ''); ?>', '<?php echo addslashes($c['room_no'] ?? ''); ?>', '<?php echo $c['day_of_week']; ?>', '<?php echo $c['start_time'] ? date('H:i', strtotime($c['start_time'])) : ''; ?>', '<?php echo $c['end_time'] ? date('H:i', strtotime($c['end_time'])) : ''; ?>')" title="Edit Course"><i class="fa-solid fa-pen"></i></button>
+                                    <button class="btn-action btn-reject" onclick="deleteCourse(<?php echo $c['id']; ?>)" title="Delete Course"><i class="fa-solid fa-trash"></i></button>
+                                </div>
                             </td>
                         </tr>
                         <?php endwhile; ?>
@@ -680,8 +823,8 @@ $active_blood_reqs = $conn->query("SELECT COUNT(id) as c FROM blood_requests WHE
                             <td><a href="../profile.php?id=<?php echo $j['posted_by']; ?>" target="_blank" style="color:var(--text-main); font-weight: 600; text-decoration:none;"><?php echo htmlspecialchars($j['full_name']); ?></a></td>
                             <td>
                                 <div style="display: flex; gap: 8px;">
-                                    <button class="btn-action btn-accept" onclick="handleJob(<?php echo $j['id']; ?>, 'approve_job')"><i class="fa-solid fa-check"></i> Approve</button>
-                                    <button class="btn-action btn-reject" onclick="handleJob(<?php echo $j['id']; ?>, 'reject_job')"><i class="fa-solid fa-xmark"></i> Reject</button>
+                                    <button class="btn-action btn-accept" onclick="handleJob(<?php echo $j['id']; ?>, 'approve_job')"><i class="fa-solid fa-check"></i></button>
+                                    <button class="btn-action btn-reject" onclick="handleJob(<?php echo $j['id']; ?>, 'reject_job')"><i class="fa-solid fa-xmark"></i></button>
                                 </div>
                             </td>
                         </tr>
@@ -732,8 +875,8 @@ $active_blood_reqs = $conn->query("SELECT COUNT(id) as c FROM blood_requests WHE
                             <td><strong style="color:var(--uiu-orange); font-size: 16px;">৳<?php echo number_format($m['price']); ?></strong></td>
                             <td>
                                 <div style="display: flex; gap: 8px;">
-                                    <button class="btn-action btn-accept" onclick="handleMarketplace(<?php echo $m['id']; ?>, 'approve_item')"><i class="fa-solid fa-check"></i> Approve</button>
-                                    <button class="btn-action btn-reject" onclick="handleMarketplace(<?php echo $m['id']; ?>, 'reject_item')"><i class="fa-solid fa-xmark"></i> Reject</button>
+                                    <button class="btn-action btn-accept" onclick="handleMarketplace(<?php echo $m['id']; ?>, 'approve_item')"><i class="fa-solid fa-check"></i></button>
+                                    <button class="btn-action btn-reject" onclick="handleMarketplace(<?php echo $m['id']; ?>, 'reject_item')"><i class="fa-solid fa-xmark"></i></button>
                                 </div>
                             </td>
                         </tr>
@@ -876,13 +1019,60 @@ $active_blood_reqs = $conn->query("SELECT COUNT(id) as c FROM blood_requests WHE
         setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 3000);
     }
 
+    // --- Custom Confirm Modal Logic ---
+    let currentConfirmAction = null;
+
+    function openConfirmModal(title, text, callback, isDanger = true) {
+        document.getElementById('confirmModalTitle').innerText = title;
+        document.getElementById('confirmModalText').innerText = text;
+        
+        let actionBtn = document.getElementById('confirmModalActionBtn');
+        if (isDanger) {
+            actionBtn.style.background = '#EF4444';
+        } else {
+            actionBtn.style.background = '#3B82F6';
+        }
+        
+        currentConfirmAction = callback;
+        document.getElementById('adminConfirmModal').style.display = 'flex';
+    }
+
+    function closeConfirmModal() {
+        document.getElementById('adminConfirmModal').style.display = 'none';
+        currentConfirmAction = null;
+    }
+
+    document.getElementById('confirmModalActionBtn').addEventListener('click', function() {
+        if(currentConfirmAction) {
+            currentConfirmAction();
+        }
+        closeConfirmModal();
+    });
+
+    // --- Sidebar Tabs (With Session Storage for persisting state after reload) ---
     function switchTab(tabId, btn) {
         document.querySelectorAll('.sidebar-menu a').forEach(a => a.classList.remove('active'));
         document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById('sec-' + tabId).classList.add('active');
+        
+        if(btn) {
+            btn.classList.add('active');
+        } else {
+            let link = document.querySelector(`.sidebar-menu a[onclick*="'${tabId}'"]`);
+            if(link) link.classList.add('active');
+        }
+        
+        let sec = document.getElementById('sec-' + tabId);
+        if(sec) sec.classList.add('active');
+
+        sessionStorage.setItem('activeAdminTab', tabId);
     }
 
+    window.addEventListener('DOMContentLoaded', () => {
+        let activeTab = sessionStorage.getItem('activeAdminTab') || 'overview';
+        switchTab(activeTab, null);
+    });
+
+    // --- AJAX Functions ---
     function updateAdminProfile() {
         let name = document.getElementById('adminUpdateName').value.trim();
         let email = document.getElementById('adminUpdateEmail').value.trim();
@@ -892,7 +1082,7 @@ $active_blood_reqs = $conn->query("SELECT COUNT(id) as c FROM blood_requests WHE
         fd.append('name', name);
         fd.append('email', email);
         
-        fetch('dashboard_2.php', { method: 'POST', body: fd }).then(r=>r.json()).then(data=>{
+        fetch(window.location.href, { method: 'POST', body: fd }).then(r=>r.json()).then(data=>{
             showToast(data.message, data.status === 'error');
             if(data.status === 'success') setTimeout(() => location.reload(), 1000);
         });
@@ -912,7 +1102,7 @@ $active_blood_reqs = $conn->query("SELECT COUNT(id) as c FROM blood_requests WHE
         fd.append('old_pass', oldPass);
         fd.append('new_pass', newPass);
         
-        fetch('dashboard_2.php', { method: 'POST', body: fd }).then(r=>r.json()).then(data=>{
+        fetch(window.location.href, { method: 'POST', body: fd }).then(r=>r.json()).then(data=>{
             showToast(data.message, data.status === 'error');
             if(data.status === 'success') {
                 document.getElementById('adminOldPass').value = '';
@@ -921,13 +1111,14 @@ $active_blood_reqs = $conn->query("SELECT COUNT(id) as c FROM blood_requests WHE
         });
     }
 
-    // --- Course Management Script ---
+    // --- Course Management ---
     function addCourse() {
         let code = document.getElementById('addCourseCode').value.trim();
         let name = document.getElementById('addCourseName').value.trim();
         let sec = document.getElementById('addCourseSec').value.trim();
         let day = document.getElementById('addCourseDay').value;
-        let time = document.getElementById('addCourseTime').value;
+        let st = document.getElementById('addCourseStartTime').value;
+        let et = document.getElementById('addCourseEndTime').value;
         let room = document.getElementById('addCourseRoom').value.trim();
 
         if(code === '' || name === '') {
@@ -941,13 +1132,71 @@ $active_blood_reqs = $conn->query("SELECT COUNT(id) as c FROM blood_requests WHE
         fd.append('course_name', name);
         fd.append('section', sec);
         fd.append('day_of_week', day);
-        fd.append('start_time', time);
+        fd.append('start_time', st);
+        fd.append('end_time', et);
         fd.append('room_no', room);
 
-        fetch('dashboard_2.php', { method: 'POST', body: fd })
+        fetch(window.location.href, { method: 'POST', body: fd })
         .then(r=>r.json())
         .then(data => {
             if(data.status === 'success') {
+                showToast(data.message);
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast(data.message, true);
+            }
+        }).catch(err => {
+            showToast("Server error occurred.", true);
+        });
+    }
+
+    function openEditCourseModal(id, code, name, sec, room, day, st, et) {
+        document.getElementById('editCourseId').value = id;
+        document.getElementById('editCourseCode').value = code;
+        document.getElementById('editCourseName').value = name;
+        document.getElementById('editCourseSec').value = sec;
+        document.getElementById('editCourseRoom').value = room;
+        document.getElementById('editCourseDay').value = day;
+        document.getElementById('editCourseStartTime').value = st;
+        document.getElementById('editCourseEndTime').value = et;
+        document.getElementById('editCourseModal').style.display = 'flex';
+    }
+
+    function closeEditCourseModal() {
+        document.getElementById('editCourseModal').style.display = 'none';
+    }
+
+    function submitEditCourse() {
+        let id = document.getElementById('editCourseId').value;
+        let code = document.getElementById('editCourseCode').value.trim();
+        let name = document.getElementById('editCourseName').value.trim();
+        let sec = document.getElementById('editCourseSec').value.trim();
+        let room = document.getElementById('editCourseRoom').value.trim();
+        let day = document.getElementById('editCourseDay').value;
+        let st = document.getElementById('editCourseStartTime').value;
+        let et = document.getElementById('editCourseEndTime').value;
+
+        if(code === '' || name === '') {
+            showToast("Course Code and Name are required!", true);
+            return;
+        }
+
+        let fd = new FormData();
+        fd.append('ajax_action', 'edit_course');
+        fd.append('course_id', id);
+        fd.append('course_code', code);
+        fd.append('course_name', name);
+        fd.append('section', sec);
+        fd.append('day_of_week', day);
+        fd.append('start_time', st);
+        fd.append('end_time', et);
+        fd.append('room_no', room);
+
+        fetch(window.location.href, { method: 'POST', body: fd })
+        .then(r=>r.json())
+        .then(data => {
+            if(data.status === 'success') {
+                closeEditCourseModal();
                 showToast(data.message);
                 setTimeout(() => location.reload(), 1000);
             } else {
@@ -957,20 +1206,29 @@ $active_blood_reqs = $conn->query("SELECT COUNT(id) as c FROM blood_requests WHE
     }
 
     function deleteCourse(courseId) {
-        if(!confirm("Are you sure you want to delete this course? This will remove all materials and assignments attached to it.")) return;
-        
-        let fd = new FormData();
-        fd.append('ajax_action', 'delete_course');
-        fd.append('course_id', courseId);
+        openConfirmModal(
+            "Delete Course?", 
+            "Are you sure you want to delete this course? This will completely remove all materials and student assignments attached to it.", 
+            function() {
+                let fd = new FormData();
+                fd.append('ajax_action', 'delete_course');
+                fd.append('course_id', courseId);
 
-        fetch('dashboard_2.php', { method: 'POST', body: fd })
-        .then(r=>r.json())
-        .then(data => {
-            if(data.status === 'success') {
-                document.getElementById('course-row-' + courseId).remove();
-                showToast(data.message);
+                fetch(window.location.href, { method: 'POST', body: fd })
+                .then(r=>r.json())
+                .then(data => {
+                    if(data.status === 'success') {
+                        let row = document.getElementById('course-row-' + courseId);
+                        if(row) row.remove();
+                        showToast(data.message);
+                    } else {
+                        showToast(data.message, true);
+                    }
+                }).catch(err => {
+                    showToast("Server error occurred.", true);
+                });
             }
-        });
+        );
     }
 
     function assignFaculty(courseId, facultyId) {
@@ -979,7 +1237,7 @@ $active_blood_reqs = $conn->query("SELECT COUNT(id) as c FROM blood_requests WHE
         fd.append('course_id', courseId);
         fd.append('faculty_id', facultyId);
 
-        fetch('dashboard_2.php', { method: 'POST', body: fd })
+        fetch(window.location.href, { method: 'POST', body: fd })
         .then(r=>r.json())
         .then(data => {
             if(data.status === 'success') showToast(data.message);
@@ -987,53 +1245,74 @@ $active_blood_reqs = $conn->query("SELECT COUNT(id) as c FROM blood_requests WHE
     }
 
     function handleMarketplace(itemId, action) {
-        if(!confirm("Are you sure?")) return;
-        let fd = new FormData(); fd.append('ajax_action', action); fd.append('item_id', itemId);
-        fetch('dashboard_2.php', { method: 'POST', body: fd }).then(r=>r.json()).then(data=>{
-            if(data.status === 'success') { document.getElementById('market-row-' + itemId).remove(); showToast(data.message); }
-        });
+        let title = action === 'approve_item' ? "Approve Item?" : "Reject & Delete Item?";
+        let isDanger = action === 'reject_item';
+        
+        openConfirmModal(title, "Are you sure you want to proceed with this action?", function() {
+            let fd = new FormData(); fd.append('ajax_action', action); fd.append('item_id', itemId);
+            fetch(window.location.href, { method: 'POST', body: fd }).then(r=>r.json()).then(data=>{
+                if(data.status === 'success') { document.getElementById('market-row-' + itemId).remove(); showToast(data.message); }
+            });
+        }, isDanger);
     }
 
     function handleJob(jobId, action) {
-        if(!confirm("Are you sure?")) return;
-        let fd = new FormData(); fd.append('ajax_action', action); fd.append('job_id', jobId);
-        fetch('dashboard_2.php', { method: 'POST', body: fd }).then(r=>r.json()).then(data=>{
-            if(data.status === 'success') { document.getElementById('job-row-' + jobId).remove(); showToast(data.message); }
-        });
+        let title = action === 'approve_job' ? "Approve Job?" : "Reject Job?";
+        let isDanger = action === 'reject_job';
+
+        openConfirmModal(title, "Are you sure you want to proceed?", function() {
+            let fd = new FormData(); fd.append('ajax_action', action); fd.append('job_id', jobId);
+            fetch(window.location.href, { method: 'POST', body: fd }).then(r=>r.json()).then(data=>{
+                if(data.status === 'success') { document.getElementById('job-row-' + jobId).remove(); showToast(data.message); }
+            });
+        }, isDanger);
     }
 
     function handleReport(postId, action) {
-        if(!confirm("Are you sure?")) return;
-        let fd = new FormData(); fd.append('ajax_action', action); fd.append('post_id', postId);
-        fetch('dashboard_2.php', { method: 'POST', body: fd }).then(r=>r.json()).then(data=>{
-            if(data.status === 'success') { document.getElementById('report-row-' + postId).remove(); showToast(data.message); }
-        });
+        let title = action === 'delete_reported_post' ? "Delete Post?" : "Dismiss Report?";
+        let isDanger = action === 'delete_reported_post';
+
+        openConfirmModal(title, "Are you sure you want to proceed?", function() {
+            let fd = new FormData(); fd.append('ajax_action', action); fd.append('post_id', postId);
+            fetch(window.location.href, { method: 'POST', body: fd }).then(r=>r.json()).then(data=>{
+                if(data.status === 'success') { document.getElementById('report-row-' + postId).remove(); showToast(data.message); }
+            });
+        }, isDanger);
     }
 
     function deleteUser(userId) {
-        if(!confirm("WARNING: This will permanently delete the user and all their data! Proceed?")) return;
-        let fd = new FormData(); fd.append('ajax_action', 'delete_user'); fd.append('target_user', userId);
-        fetch('dashboard_2.php', { method: 'POST', body: fd }).then(r=>r.json()).then(data=>{
-            if(data.status === 'success') { document.getElementById('user-row-' + userId).remove(); showToast("User deleted completely."); }
-        });
+        openConfirmModal(
+            "Delete User Completely?", 
+            "WARNING: This will permanently delete the user and all their data (posts, comments, etc)! Proceed?", 
+            function() {
+                let fd = new FormData(); fd.append('ajax_action', 'delete_user'); fd.append('target_user', userId);
+                fetch(window.location.href, { method: 'POST', body: fd }).then(r=>r.json()).then(data=>{
+                    if(data.status === 'success') { document.getElementById('user-row-' + userId).remove(); showToast("User deleted completely."); }
+                });
+            }
+        );
     }
 
     function changeRole(userId, newRole) {
-        if(!confirm("Change role to " + newRole + "?")) return;
-        let fd = new FormData(); fd.append('ajax_action', 'change_role'); fd.append('target_user', userId); fd.append('new_role', newRole);
-        fetch('dashboard_2.php', { method: 'POST', body: fd }).then(r=>r.json()).then(data=>{
-            if(data.status === 'success') { showToast("User role updated to " + newRole); }
-        });
+        openConfirmModal("Change User Role?", "Are you sure you want to change this user's role to " + newRole + "?", function() {
+            let fd = new FormData(); fd.append('ajax_action', 'change_role'); fd.append('target_user', userId); fd.append('new_role', newRole);
+            fetch(window.location.href, { method: 'POST', body: fd }).then(r=>r.json()).then(data=>{
+                if(data.status === 'success') { showToast("User role updated to " + newRole); }
+            });
+        }, false);
     }
 
     function createClub() {
         let name = document.getElementById('clubName').value.trim();
         let cat = document.getElementById('clubCat').value;
         let desc = document.getElementById('clubDesc').value.trim();
-        if(name === '' || desc === '') { alert("Please fill all fields"); return; }
+        if(name === '' || desc === '') { 
+            showToast("Please fill all fields", true); 
+            return; 
+        }
 
         let fd = new FormData(); fd.append('ajax_action', 'create_club'); fd.append('club_name', name); fd.append('club_category', cat); fd.append('club_desc', desc);
-        fetch('dashboard_2.php', { method: 'POST', body: fd }).then(r=>r.json()).then(data=>{
+        fetch(window.location.href, { method: 'POST', body: fd }).then(r=>r.json()).then(data=>{
             if(data.status === 'success') {
                 showToast(data.message);
                 setTimeout(() => location.reload(), 1000);
@@ -1042,19 +1321,23 @@ $active_blood_reqs = $conn->query("SELECT COUNT(id) as c FROM blood_requests WHE
     }
 
     function deleteClub(clubId) {
-        if(!confirm("Delete this club?")) return;
-        let fd = new FormData(); fd.append('ajax_action', 'delete_club'); fd.append('club_id', clubId);
-        fetch('dashboard_2.php', { method: 'POST', body: fd }).then(r=>r.json()).then(data=>{
-            if(data.status === 'success') { document.getElementById('club-row-' + clubId).remove(); showToast(data.message); }
+        openConfirmModal("Delete Club?", "Are you sure you want to delete this campus club?", function() {
+            let fd = new FormData(); fd.append('ajax_action', 'delete_club'); fd.append('club_id', clubId);
+            fetch(window.location.href, { method: 'POST', body: fd }).then(r=>r.json()).then(data=>{
+                if(data.status === 'success') { document.getElementById('club-row-' + clubId).remove(); showToast(data.message); }
+            });
         });
     }
 
     function broadcastAnnouncement() {
         let content = document.getElementById('announceContent').value.trim();
-        if(content === '') { alert("Announcement cannot be empty!"); return; }
+        if(content === '') { 
+            showToast("Announcement cannot be empty!", true); 
+            return; 
+        }
 
         let fd = new FormData(); fd.append('ajax_action', 'broadcast_announcement'); fd.append('content', content);
-        fetch('dashboard_2.php', { method: 'POST', body: fd }).then(r=>r.json()).then(data=>{
+        fetch(window.location.href, { method: 'POST', body: fd }).then(r=>r.json()).then(data=>{
             if(data.status === 'success') {
                 showToast(data.message);
                 document.getElementById('announceContent').value = '';
@@ -1064,18 +1347,20 @@ $active_blood_reqs = $conn->query("SELECT COUNT(id) as c FROM blood_requests WHE
     }
 
     function deleteAnnouncement(postId) {
-        if(!confirm("Delete this announcement?")) return;
-        let fd = new FormData(); fd.append('ajax_action', 'delete_announcement'); fd.append('post_id', postId);
-        fetch('dashboard_2.php', { method: 'POST', body: fd }).then(r=>r.json()).then(data=>{
-            if(data.status === 'success') { document.getElementById('ann-row-' + postId).remove(); showToast(data.message); }
+        openConfirmModal("Delete Announcement?", "Are you sure you want to remove this announcement?", function() {
+            let fd = new FormData(); fd.append('ajax_action', 'delete_announcement'); fd.append('post_id', postId);
+            fetch(window.location.href, { method: 'POST', body: fd }).then(r=>r.json()).then(data=>{
+                if(data.status === 'success') { document.getElementById('ann-row-' + postId).remove(); showToast(data.message); }
+            });
         });
     }
 
     function deleteBloodReq(reqId) {
-        if(!confirm("Delete this blood request? Use this only for spam/fake requests.")) return;
-        let fd = new FormData(); fd.append('ajax_action', 'delete_blood_request'); fd.append('req_id', reqId);
-        fetch('dashboard_2.php', { method: 'POST', body: fd }).then(r=>r.json()).then(data=>{
-            if(data.status === 'success') { document.getElementById('blood-row-' + reqId).remove(); showToast(data.message); }
+        openConfirmModal("Delete Request?", "Are you sure you want to delete this blood request? Use this only for spam or fake requests.", function() {
+            let fd = new FormData(); fd.append('ajax_action', 'delete_blood_request'); fd.append('req_id', reqId);
+            fetch(window.location.href, { method: 'POST', body: fd }).then(r=>r.json()).then(data=>{
+                if(data.status === 'success') { document.getElementById('blood-row-' + reqId).remove(); showToast(data.message); }
+            });
         });
     }
 </script>

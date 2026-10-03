@@ -5,8 +5,9 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// FIX: Update redirect target
 if (isset($_SESSION['user_id']) && $_SESSION['role'] === 'Admin') {
-    header("Location: dashboard.php");
+    header("Location: admin_dashboard.php");
     exit();
 }
 
@@ -22,7 +23,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['role'] = $user['role'];
             $_SESSION['full_name'] = $user['full_name'];
-            header("Location: dashboard.php");
+            
+            // FIX: Redirect to new admin dashboard file
+            header("Location: admin_dashboard.php");
             exit();
         } else {
             $error = "Invalid password!";

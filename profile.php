@@ -390,9 +390,20 @@ include 'includes/sidebar.php';
                         $fac_courses = $conn->query("SELECT * FROM courses WHERE faculty_id = $profile_id");
                         if ($fac_courses && $fac_courses->num_rows > 0) {
                             while ($fc = $fac_courses->fetch_assoc()) {
+                                $time_str = 'N/A';
+                                if ($fc['start_time']) {
+                                    $time_str = date('h:i A', strtotime($fc['start_time']));
+                                    if ($fc['end_time']) {
+                                        $time_str .= ' - ' . date('h:i A', strtotime($fc['end_time']));
+                                    }
+                                }
+
                                 echo '<div style="padding: 16px; border: 1px solid var(--border-light); border-radius: 8px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
                                         <strong style="font-size: 16px; color: var(--text-main); display: block; margin-bottom: 4px;">'.htmlspecialchars($fc['course_code']).'</strong>
                                         <span style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 10px;">'.htmlspecialchars($fc['course_name']).'</span>
+                                        <div style="display: flex; gap: 10px; font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">
+                                            <span style="background: var(--bg-light); padding: 4px 8px; border-radius: 4px; font-weight: 600;"><i class="fa-regular fa-clock"></i> '.htmlspecialchars($fc['day_of_week']).' ('.$time_str.')</span>
+                                        </div>
                                         <div style="display: flex; gap: 10px; font-size: 12px; color: var(--text-muted);">
                                             <span style="background: var(--bg-light); padding: 4px 8px; border-radius: 4px; font-weight: 600;">Sec: '.htmlspecialchars($fc['section'] ?? 'N/A').'</span>
                                             <span style="background: var(--bg-light); padding: 4px 8px; border-radius: 4px; font-weight: 600;">Room: '.htmlspecialchars($fc['room_no'] ?? 'N/A').'</span>
