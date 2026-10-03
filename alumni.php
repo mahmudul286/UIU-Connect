@@ -48,7 +48,7 @@ $my_alumni_data = null;
 $res = $conn->query("SELECT * FROM alumni_profiles WHERE user_id = $user_id");
 if ($res->num_rows > 0) {
     $my_alumni_data = $res->fetch_assoc();
-    $is_alumni = true; // Treats users who registered in the directory as Alumni for UI purposes
+    $is_alumni = true; 
 }
 
 include 'includes/header.php';

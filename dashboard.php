@@ -969,7 +969,7 @@ include 'includes/sidebar.php';
         document.getElementById('ocrForm').submit();
     }
 
-    function startRealOCR(event) {
+function startRealOCR(event) {
         const file = event.target.files[0];
         if (!file) return;
 
@@ -994,7 +994,7 @@ include 'includes/sidebar.php';
         ).then(({ data: { text } }) => {
             logDiv.innerText = 'Processing text...';
             
-            const regex = /[A-Z]{3}\s*\d{3}/gi;
+            const regex = /[A-Z]{3}\s*\d{3,4}/gi;
             let matches = text.match(regex);
             
             if (matches && matches.length > 0) {
