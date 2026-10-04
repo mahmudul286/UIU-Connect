@@ -8,7 +8,6 @@ $user_id = $_SESSION['user_id'];
 $user_role = $_SESSION['role'];
 $current_page = 'counseling.php';
 
-// Auto-update ENUM to support appointment notifications
 $conn->query("ALTER TABLE notifications MODIFY COLUMN type ENUM('like','comment','connection','announcement','appointment') NOT NULL");
 
 // Faculty: Add Slot
@@ -40,10 +39,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
             $row = $check->fetch_assoc();
             $student_id = $row['student_id'];
 
-            // Update status
             $conn->query("UPDATE appointments SET status = '$new_status' WHERE id = $appt_id");
-            
-            // Send Notification to the Student
             $conn->query("INSERT INTO notifications (user_id, sender_id, type, reference_id) VALUES ($student_id, $user_id, 'appointment', $appt_id)");
 
             echo json_encode(['status' => 'success']);
@@ -212,7 +208,7 @@ include 'includes/sidebar.php';
                                     <button class="btn-primary" style="background: #10B981; border: none; padding: 6px 16px; font-size: 12px;" onclick="updateStatus(<?php echo $appt_id; ?>, 'Approved')"><i class="fa-solid fa-check"></i> Approve</button>
                                     <button class="btn-outline" style="color: #EF4444; border-color: #FCA5A5; padding: 6px 16px; font-size: 12px;" onclick="updateStatus(<?php echo $appt_id; ?>, 'Rejected')">Reject</button>
                                 <?php elseif($row['status'] === 'Approved'): ?>
-                                    <button class="btn-primary" style="background: #0284C7; border: none; padding: 6px 16px; font-size: 12px;" onclick="updateStatus(<?php echo $appt_id; ?>, 'Completed')"> Mark as Completed</button>
+                                    <button class="btn-primary" style="background: #0284C7; border: none; padding: 6px 16px; font-size: 12px;" onclick="updateStatus(<?php echo $appt_id; ?>, 'Completed')"><i class="fa-solid fa-check-double"></i> Mark as Completed</button>
                                 <?php endif; ?>
                             </div>
                         <?php endif; ?>
@@ -280,17 +276,24 @@ include 'includes/sidebar.php';
                 <input type="text" id="facultySearch" class="poll-input" style="margin-bottom: 0; padding-left: 36px;" placeholder="Search faculty name..." onkeyup="searchFacultySidebar(this.value)">
             </div>
             
-            <div id="facultyList" style="max-height: 450px; overflow-y: auto; padding-right: 5px;">
+            <div id="facultyList" style="max-height: 450px; overflow-y: auto; overflow-x: hidden; padding-right: 5px;">
                 <?php
                 $fac_sql = "SELECT id, full_name, department FROM users WHERE role = 'Faculty' ORDER BY full_name ASC";
                 $fac_res = $conn->query($fac_sql);
                 if ($fac_res && $fac_res->num_rows > 0) {
                     while ($f = $fac_res->fetch_assoc()) {
-                        echo '<div class="faculty-card faculty-item" onclick="selectFaculty('.$f['id'].')">
-                                <div class="avatar-sm" style="background:var(--bg-light); border:1px solid var(--border-light); color:var(--text-main); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">'.strtoupper($f['full_name'][0]).'</div>
-                                <div>
-                                    <strong class="fac-name" style="font-size:14px; color:var(--text-main); display:block;">'.htmlspecialchars($f['full_name']).'</strong>
-                                    <span style="font-size:12px; color:var(--text-muted);">'.htmlspecialchars($f['department']).'</span>
+                        // FIX: 100% Responsive, Beautiful UI. Prevents horizontal scroll, truncates large names.
+                        echo '<div class="faculty-card faculty-item" style="border: 1px solid var(--border-light); padding: 16px; border-radius: 12px; margin-bottom: 12px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: 0.2s;">
+                                <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 15px;">
+                                    <div style="width: 42px; height: 42px; background: #F0F9FF; color: #0284C7; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; flex-shrink:0;">'.strtoupper($f['full_name'][0]).'</div>
+                                    <div style="overflow:hidden; flex:1; min-width:0;">
+                                        <strong class="fac-name" style="font-size:15px; color:var(--text-main); display:block; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">'.htmlspecialchars($f['full_name']).'</strong>
+                                        <span style="font-size:12px; color:var(--text-muted);"><i class="fa-solid fa-briefcase" style="margin-right:4px;"></i>'.htmlspecialchars($f['department']).'</span>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 10px;">
+                                    <button class="btn-primary" style="flex:1; padding: 8px; font-size: 12px; background: #0284C7; border: none; border-radius: 6px; display:flex; align-items:center; justify-content:center; gap:5px;" onclick="selectFaculty('.$f['id'].')" title="Book Counseling"><i class="fa-solid fa-calendar-check"></i> Book</button>
+                                    <a href="profile.php?id='.$f['id'].'" class="btn-outline" style="flex:1; padding: 8px; font-size: 12px; border-radius: 6px; display:flex; align-items:center; justify-content:center; gap:5px; text-decoration:none; color:var(--text-main); border-color:var(--border-light);" title="View Faculty Profile"><i class="fa-solid fa-user"></i> Profile</a>
                                 </div>
                               </div>';
                     }
@@ -306,7 +309,6 @@ include 'includes/sidebar.php';
 </main>
 
 <?php if($user_role === 'Student'): ?>
-<!-- FIX: Modal only accessible to students, resolving linter warnings -->
 <div class="modal-overlay" id="bookModal">
     <div class="modal-content" style="max-width: 480px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid var(--border-light); padding-bottom:12px;">
@@ -389,7 +391,7 @@ include 'includes/sidebar.php';
         items.forEach(item => {
             let name = item.querySelector('.fac-name').innerText.toLowerCase();
             if (name.includes(query)) {
-                item.style.display = 'flex';
+                item.style.display = 'block';
             } else {
                 item.style.display = 'none';
             }

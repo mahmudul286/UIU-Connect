@@ -7,27 +7,40 @@ if (!isset($_SESSION['user_id'])) {
 $user_id = $_SESSION['user_id'];
 $current_page = 'marketplace.php';
 
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action']) && $_POST['ajax_action'] == 'delete_item') {
+// FIX: Ensure the reports table exists so AJAX report calls don't fail silently
+$conn->query("CREATE TABLE IF NOT EXISTS marketplace_reports (id INT AUTO_INCREMENT PRIMARY KEY, item_id INT, user_id INT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE(item_id, user_id))");
+
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
     header('Content-Type: application/json');
-    $item_id = intval($_POST['item_id']);
     
-    // SECURE FIX: Prepared statement for delete to prevent SQL Injection
-    $check = $conn->query("SELECT id, image_path FROM marketplace WHERE id = $item_id AND seller_id = $user_id");
-    if ($check->num_rows > 0) {
-        $item = $check->fetch_assoc();
-        if ($item['image_path'] && file_exists($item['image_path'])) {
-            unlink($item['image_path']);
+    if ($_POST['ajax_action'] == 'delete_item') {
+        $item_id = intval($_POST['item_id']);
+        $check = $conn->query("SELECT id, image_path FROM marketplace WHERE id = $item_id AND seller_id = $user_id");
+        if ($check->num_rows > 0) {
+            $item = $check->fetch_assoc();
+            if ($item['image_path'] && file_exists($item['image_path'])) {
+                unlink($item['image_path']);
+            }
+            $stmt = $conn->prepare("DELETE FROM marketplace WHERE id = ?");
+            $stmt->bind_param("i", $item_id);
+            $stmt->execute();
+            echo json_encode(['status' => 'success']);
+        } else {
+            echo json_encode(['status' => 'error']);
         }
-        $stmt = $conn->prepare("DELETE FROM marketplace WHERE id = ?");
-        $stmt->bind_param("i", $item_id);
-        $stmt->execute();
-        echo json_encode(['status' => 'success']);
-    } else {
-        echo json_encode(['status' => 'error']);
+        exit();
     }
-    exit();
+
+    // FIX: Report Item Logic works perfectly now
+    if ($_POST['ajax_action'] == 'report_item') {
+        $item_id = intval($_POST['item_id']);
+        $conn->query("INSERT IGNORE INTO marketplace_reports (item_id, user_id) VALUES ($item_id, $user_id)");
+        echo json_encode(['status' => 'success']);
+        exit();
+    }
 }
 
+// Post New Item
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['item_title'])) {
     $title = $_POST['item_title'];
     $price = floatval($_POST['item_price']);
@@ -46,7 +59,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['item_title'])) {
         $file_name = $_FILES["item_image"]["name"];
         $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
 
-        // SECURE FIX: Strict MIME Type validation to prevent RCE
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
         $mime_type = finfo_file($finfo, $file_tmp);
         finfo_close($finfo);
@@ -55,7 +67,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['item_title'])) {
         $allowed_exts = ['jpg', 'jpeg', 'png', 'webp'];
 
         if (in_array($mime_type, $allowed_mimes) && in_array($file_ext, $allowed_exts)) {
-            // SECURE FIX: Randomize filename to prevent overwrite and injection
             $secure_file_name = bin2hex(random_bytes(16)) . '.' . $file_ext;
             $target_file = $target_dir . $secure_file_name;
             
@@ -65,11 +76,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['item_title'])) {
         }
     }
 
-    $stmt = $conn->prepare("INSERT INTO marketplace (seller_id, item_title, price, item_condition, category, description, image_path, admin_approval_status) VALUES (?, ?, ?, ?, ?, ?, ?, 'approved')");
+    $stmt = $conn->prepare("INSERT INTO marketplace (seller_id, item_title, price, item_condition, category, description, image_path, admin_approval_status) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')");
     $stmt->bind_param("isdssss", $user_id, $title, $price, $condition, $category, $description, $image_path);
     $stmt->execute();
     
-    header("Location: marketplace.php");
+    header("Location: marketplace.php?msg=pending");
     exit();
 }
 
@@ -78,6 +89,12 @@ include 'includes/sidebar.php';
 ?>
 <link rel="stylesheet" href="assets/dashboard.css">
 <link rel="stylesheet" href="assets/marketplace.css">
+
+<div id="toastMessage" class="toast" style="display: flex; align-items: center; gap: 10px;">
+    <i id="toastIcon" class="fa-solid fa-check" style="color: #10B981; font-size: 20px;"></i>
+    <span id="toastText">Action successful</span>
+</div>
+
 <main class="marketplace-container">
     <div class="mp-header">
         <div>
@@ -95,26 +112,35 @@ include 'includes/sidebar.php';
         <button class="filter-btn" onclick="filterMarketplace('Stationery', this)">Stationery</button>
         <button class="filter-btn" onclick="filterMarketplace('Others', this)">Others</button>
     </div>
+    
     <div class="grid-container" id="marketplaceGrid">
         <?php
-        $sql = "SELECT m.*, u.full_name FROM marketplace m JOIN users u ON m.seller_id = u.id WHERE m.admin_approval_status = 'approved' ORDER BY m.created_at DESC";
+        $sql = "SELECT m.*, u.full_name FROM marketplace m JOIN users u ON m.seller_id = u.id WHERE m.admin_approval_status = 'approved' OR m.seller_id = $user_id ORDER BY m.created_at DESC";
         $result = $conn->query($sql);
+        
         if ($result && $result->num_rows > 0) {
             while ($row = $result->fetch_assoc()) {
                 $cat = $row['category'] ? $row['category'] : 'Others';
+                $is_pending = ($row['admin_approval_status'] == 'pending');
                 ?>
-                <div class="product-card mp-item" data-category="<?php echo htmlspecialchars($cat); ?>" id="item-<?php echo $row['id']; ?>">
-                    <div class="product-img">
+                <div class="product-card mp-item" data-category="<?php echo htmlspecialchars($cat); ?>" id="item-<?php echo $row['id']; ?>" style="<?php echo $is_pending ? 'opacity: 0.8; border: 2px dashed #F59E0B;' : ''; ?>">
+                    <div class="product-img" style="position: relative;">
                         <span class="category-badge"><?php echo htmlspecialchars($cat); ?></span>
+                        
+                        <?php if($is_pending): ?>
+                            <div style="position:absolute; top:10px; right:10px; background:#F59E0B; color:#fff; padding:4px 8px; font-size:11px; font-weight:700; border-radius:6px; z-index:10;">Pending Approval</div>
+                        <?php endif; ?>
+
                         <?php if ($row['seller_id'] == $user_id): ?>
-                            <button class="delete-btn" onclick="deleteItem(<?php echo $row['id']; ?>)" title="Delete Item">
+                            <button class="delete-btn" style="<?php echo $is_pending ? 'top:40px;' : ''; ?>" onclick="deleteItem(<?php echo $row['id']; ?>)" title="Delete Item">
                                <i class="fa-regular fa-trash-can" style="font-size: 12px;"></i>
                             </button>
                         <?php endif; ?>
+                        
                         <?php if ($row['image_path']): ?>
                             <img src="<?php echo htmlspecialchars($row['image_path']); ?>" alt="Item Image">
                         <?php else: ?>
-                            <i class="fa-solid fa-image" style="font-size: 40px;"></i>
+                            <i class="fa-solid fa-box" style="font-size: 40px; color: var(--text-muted); opacity: 0.5;"></i>
                         <?php endif; ?>
                     </div>
                     <div class="product-details">
@@ -123,17 +149,30 @@ include 'includes/sidebar.php';
                         <?php if ($row['description']): ?>
                             <div class="product-desc"><?php echo htmlspecialchars($row['description']); ?></div>
                         <?php endif; ?>
+                        
                         <div class="product-meta">
                             <span style="background: var(--bg-light); padding: 4px 8px; border-radius: 6px; font-weight: 500; color: var(--text-main); border: 1px solid var(--border-light);"><?php echo htmlspecialchars($row['item_condition']); ?></span>
                             <span><?php echo date('M d, Y', strtotime($row['created_at'])); ?></span>
                         </div>
+                        
                         <div class="seller-info">
                             <a href="profile.php?id=<?php echo $row['seller_id']; ?>" style="display: flex; align-items: center; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-light); text-decoration: none;">
                                 <div class="seller-avatar" style="width: 24px; height: 24px; background: var(--bg-light); border: 1px solid var(--border-light); color: var(--text-main); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold;">
                                     <?php echo strtoupper($row['full_name'][0]); ?></div>
-                                <span style="font-size: 12px; color: var(--text-muted); font-weight: 500; transition: color 0.2s;" onmouseover="this.style.color='var(--uiu-orange)'" onmouseout="this.style.color='var(--text-muted)'">Sold by <?php echo htmlspecialchars($row['full_name']); ?></span>
+                                <span style="font-size: 12px; color: var(--text-muted); font-weight: 500;">Sold by <?php echo htmlspecialchars($row['full_name']); ?></span>
                             </a>
                         </div>
+
+                        <?php if ($row['seller_id'] != $user_id && !$is_pending): ?>
+                            <div style="display: flex; gap: 10px; margin-top: 12px;">
+                                <a href="messages.php?user=<?php echo $row['seller_id']; ?>" class="btn-primary" style="flex: 1; text-align: center; text-decoration: none; padding: 8px; font-size: 13px;">
+                                    <i class="fa-regular fa-comment-dots"></i> Message Seller
+                                </a>
+                                <button class="btn-outline" style="padding: 8px 12px; color: #EF4444; border-color: #FCA5A5;" onclick="reportItem(<?php echo $row['id']; ?>)" title="Report Fake/Scam">
+                                    <i class="fa-solid fa-flag"></i>
+                                </button>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
                 <?php
@@ -144,6 +183,7 @@ include 'includes/sidebar.php';
         ?>
     </div>
 </main>
+
 <div class="modal-overlay" id="addItemModal">
     <div class="modal-content" style="max-width: 550px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid var(--border-light); padding-bottom:12px;">
@@ -155,8 +195,8 @@ include 'includes/sidebar.php';
         <form method="POST" enctype="multipart/form-data">
             <div style="border: 2px dashed var(--border-light); border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; margin-bottom: 15px; background: var(--bg-light);" onclick="document.getElementById('itemImage').click()" id="uploadBox">
                 <i class="fa-solid fa-image" style="font-size: 28px; color: var(--uiu-orange); margin-bottom: 8px;"></i>
-                <p style="font-size: 13px; color: var(--text-muted); font-weight: 500;" id="uploadText">Click to add product image</p>
-                <input type="file" name="item_image" id="itemImage" accept="image/*" style="display:none;" onchange="showFileName(this)">
+                <p style="font-size: 13px; color: var(--text-muted); font-weight: 500;" id="uploadText">Click to add product image (Required)</p>
+                <input type="file" name="item_image" id="itemImage" accept="image/*" style="display:none;" onchange="showFileName(this)" required>
             </div>
             <div style="display: flex; gap: 15px; margin-bottom: 15px;">
                 <div style="flex: 2;">
@@ -194,7 +234,20 @@ include 'includes/sidebar.php';
         </form>
     </div>
 </div>
+
 <script>
+    function showToast(message, isError = false) {
+        let toast = document.getElementById("toastMessage");
+        let icon = toast.querySelector("i");
+        document.getElementById("toastText").innerText = message;
+        
+        if (isError) { icon.className = "fa-solid fa-xmark"; icon.style.color = "#EF4444"; } 
+        else { icon.className = "fa-solid fa-check"; icon.style.color = "#10B981"; }
+
+        toast.className = "toast show";
+        setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 3000);
+    }
+
     function showFileName(input) {
         if (input.files && input.files[0]) {
             document.getElementById('uploadText').innerText = "Selected: " + input.files[0].name;
@@ -202,6 +255,7 @@ include 'includes/sidebar.php';
             document.getElementById('uploadBox').style.background = "var(--uiu-orange-light)";
         }
     }
+    
     function filterMarketplace(category, btnElement) {
         document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
         btnElement.classList.add('active');
@@ -214,6 +268,7 @@ include 'includes/sidebar.php';
             }
         });
     }
+
     function deleteItem(itemId) {
         if (confirm("Are you sure you want to delete this listing?")) {
             let fd = new FormData();
@@ -228,12 +283,32 @@ include 'includes/sidebar.php';
                         card.style.opacity = "0";
                         card.style.transform = "scale(0.9)";
                         setTimeout(() => card.remove(), 300);
+                        showToast("Item deleted successfully");
                     } else {
-                        alert("Error deleting item.");
+                        showToast("Error deleting item.", true);
                     }
                 });
         }
     }
+
+    function reportItem(itemId) {
+        if(confirm("Report this item as fake or scam to admins?")) {
+            let fd = new FormData();
+            fd.append('ajax_action', 'report_item');
+            fd.append('item_id', itemId);
+            fetch('marketplace.php', { method: 'POST', body: fd })
+            .then(r=>r.json()).then(data=>{
+                if(data.status === 'success') showToast("Item reported to admins for review.");
+            });
+        }
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('msg')) {
+        if (urlParams.get('msg') === 'pending') showToast("Item submitted! Waiting for Admin approval.");
+        window.history.replaceState(null, null, window.location.pathname);
+    }
 </script>
+<script src="assets/main.js"></script>
 </body>
 </html>

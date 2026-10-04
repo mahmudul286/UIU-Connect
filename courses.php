@@ -5,18 +5,18 @@ if (!isset($_SESSION['user_id'])) { header("Location: index.php"); exit(); }
 $user_id = $_SESSION['user_id'];
 $current_page = 'courses.php';
 
+// Direct publish, no admin approval required for materials!
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['upload_material'])) {
     $course_id = intval($_POST['course_id']);
     $title = $conn->real_escape_string($_POST['material_title']);
     $category = $conn->real_escape_string($_POST['material_category']);
     
-    // FIX: Secure File Upload
     if (isset($_FILES['material_file']) && $_FILES['material_file']['error'] == 0) {
         $target_dir = "uploads/materials/";
         if (!file_exists($target_dir)) mkdir($target_dir, 0777, true);
         
         $file_ext = strtolower(pathinfo($_FILES["material_file"]["name"], PATHINFO_EXTENSION));
-        $allowed_exts = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'zip', 'rar', 'txt', 'jpg', 'jpeg', 'png']; // Restricted
+        $allowed_exts = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'zip', 'rar', 'txt', 'jpg', 'jpeg', 'png']; 
         
         if (in_array($file_ext, $allowed_exts)) {
             $file_name = time() . '_' . bin2hex(random_bytes(8)) . '.' . $file_ext;
@@ -35,6 +35,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['upload_material'])) {
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
     header('Content-Type: application/json');
     
+    // NEW: Report Material Logic
+    if ($_POST['ajax_action'] == 'report_material') {
+        $mat_id = intval($_POST['mat_id']);
+        $conn->query("INSERT IGNORE INTO material_reports (material_id, user_id) VALUES ($mat_id, $user_id)");
+        echo json_encode(['status' => 'success']); 
+        exit();
+    }
+
     if ($_POST['ajax_action'] == 'search_courses') {
         $query = $conn->real_escape_string($_POST['query']);
         $sql = "SELECT id, course_code, course_name FROM courses WHERE course_code LIKE '%$query%' OR course_name LIKE '%$query%' GROUP BY course_code LIMIT 10";
@@ -82,7 +90,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
                                 <span style="font-size: 11px; color: var(--text-muted);">Uploaded by '.htmlspecialchars($m['full_name']).' • '.date('M d, Y', strtotime($m['uploaded_at'])).'</span>
                             </div>
                         </div>
-                        <a href="'.htmlspecialchars($m['file_path']).'" download class="btn-outline" style="padding: 6px 12px; font-size: 12px; text-decoration: none;">Download</a>
+                        <div style="display: flex; gap: 8px;">
+                            <a href="'.htmlspecialchars($m['file_path']).'" download class="btn-outline" style="padding: 6px 12px; font-size: 12px; text-decoration: none;"><i class="fa-solid fa-download"></i></a>
+                            <button class="btn-outline" style="color: #EF4444; border-color: #FCA5A5; padding: 6px 12px; font-size: 12px;" onclick="reportMaterial('.$m['id'].')" title="Report Spam/Fake"><i class="fa-solid fa-flag"></i></button>
+                        </div>
                     </div>';
             }
         }
@@ -123,6 +134,11 @@ include 'includes/sidebar.php';
 
 <link rel="stylesheet" href="assets/dashboard.css">
 <link rel="stylesheet" href="assets/courses.css">
+
+<div id="toastMessage" class="toast" style="display: flex; align-items: center; gap: 10px;">
+    <i id="toastIcon" class="fa-solid fa-check" style="color: #10B981; font-size: 20px;"></i>
+    <span id="toastText">Action successful</span>
+</div>
 
 <div class="courses-container">
     
@@ -203,6 +219,16 @@ include 'includes/sidebar.php';
 </div>
 
 <script>
+    function showToast(message, isError = false) {
+        let toast = document.getElementById("toastMessage");
+        let icon = toast.querySelector("i");
+        document.getElementById("toastText").innerText = message;
+        if (isError) { icon.className = "fa-solid fa-xmark"; icon.style.color = "#EF4444"; } 
+        else { icon.className = "fa-solid fa-check"; icon.style.color = "#10B981"; }
+        toast.className = "toast show";
+        setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 3000);
+    }
+
     function searchCourses(query) {
         if(query.length < 2 && query.length > 0) return;
         let fd = new FormData();
@@ -236,6 +262,18 @@ include 'includes/sidebar.php';
         document.getElementById('uploadCourseId').value = courseId;
         document.getElementById('uploadCourseCode').value = courseCode;
         document.getElementById('uploadModal').style.display = 'flex';
+    }
+
+    function reportMaterial(matId) {
+        if(confirm("Report this material as spam, fake, or irrelevant?")) {
+            let fd = new FormData();
+            fd.append('ajax_action', 'report_material');
+            fd.append('mat_id', matId);
+            fetch('courses.php', { method: 'POST', body: fd })
+            .then(r=>r.json()).then(data=>{
+                if(data.status === 'success') showToast("Material reported to admins for review.");
+            });
+        }
     }
 
     <?php if($first_course_id): ?>
