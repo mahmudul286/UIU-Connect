@@ -1,8 +1,21 @@
 # UIU Connect — The Smart Campus OS
 
+
+
 **UIU Connect** is a full-stack academic and campus social platform built exclusively for **United International University (UIU)**. It replaces scattered social media groups and manual notice boards with a unified ecosystem connecting **Students**, **Faculty**, **Alumni**, and **Administrators**.
 
 From AI-powered OCR trimester routine synchronization and a categorized course materials repository to faculty counseling slot booking, an encrypted real-time messenger, an emergency blood bank, and a moderated campus marketplace, UIU Connect centralizes daily university life into a single web application.
+
+## Key Screenshots
+
+### Student Dashboard & Campus Feed
+
+
+### AI/OCR Trimester Routine Scanner
+
+
+### Admin Control Panel
+
 
 ## Key Features by Module
 
