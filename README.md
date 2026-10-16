@@ -4,10 +4,9 @@
 
 From AI-powered OCR trimester routine synchronization and a categorized course materials repository to faculty counseling slot booking, an encrypted real-time messenger, an emergency blood bank, and a moderated campus marketplace, UIU Connect centralizes daily university life into a single web application.
 
-
-## Key Features by Module
 <img src="assets/screenshots/landing.png" alt="UIU Connect Landing Page" width="100%">
 
+## Key Features by Module
 ### 1. Centralized Social Feed & Campus Announcements
 - **Rich Post Composer**: Publish text updates, upload photos/videos/documents (`jpg`, `png`, `gif`, `mp4`, `webm`, `pdf`, `doc`, `docx`, `zip`), and launch interactive multi-option **Campus Polls**.
 - **Granular Privacy Controls**: Set post visibility to `Public`, `Connections`, or `Only Me`, with full post editing and an auditable **Edit History** log.
