@@ -26,41 +26,41 @@ From AI-powered OCR trimester routine synchronization and a categorized course m
 - **Faculty Task & Assignment Manager**: Faculty members create course-specific assignments with deadlines and downloadable resource attachments (`uploads/tasks/`), which appear automatically in enrolled students' pending assignment widgets.
 
 
-### 3. Course Materials Hub (`courses.php`)
+### 3. Course Materials Hub
 - **Categorized Study Repository**: Browse and search courses by code or title and filter materials across five tabs: **Mid Questions**, **Final Questions**, **CT Questions**, **Notes**, and **Books**.
 - **Direct Peer & Faculty Sharing**: Upload and download study files (`pdf`, `doc`, `docx`, `ppt`, `pptx`, `zip`, `rar`, `txt`, `jpg`, `png`) with one-click spam/fake reporting.
 
-### 4. Faculty Counseling & Appointment System (`counseling.php`)
+### 4. Faculty Counseling & Appointment System
 - **Faculty Slot Management**: Faculty members define recurring weekly counseling hours by day of the week and start/end times.
 - **14-Day Dynamic Booking Engine**: Students select a faculty member, view dynamically generated available time slots for the upcoming 14 days, and submit appointment requests with their consultation reason.
 - **Approval Workflow & Alerts**: Faculty can **Approve** or **Reject** appointments with instant status notifications delivered to the student.
 
-### 5. Skills, Developer Portfolio & Collaborator Finder (`skills.php`)
+### 5. Skills, Developer Portfolio & Collaborator Finder
 - **Student Skill Tags**: Students curate technical and academic skills on their profile.
 - **Project Showcase**: Publish software and hardware projects with cover images (`uploads/projects/`), tech stack tags, GitHub repository links, and live demo URLs, complete with community project likes.
 - **Smart Collaborator Search**: Search for peers by skill tag or project tech stack and initiate direct messages with one click.
 
-### 6. End-to-End Encrypted Messenger (`messages.php`)
+### 6. End-to-End Encrypted Messenger
 - **AES-256-CBC Encrypted Chat**: Direct messages between campus members are encrypted server-side using OpenSSL `AES-256-CBC` with dynamically generated Initialization Vectors (IV) encoded alongside the payload.
 - **Real-Time Polling & Read Receipts**: Live chat window updates every 3 seconds with unread message badges and contact search.
 
-### 7. Smart Campus Blood Bank (`blood_bank.php`)
+### 7. Smart Campus Blood Bank
 - **Emergency Blood Requests**: Post urgent blood requirements specifying patient name, blood group, bags needed, hospital name, urgency level (`Normal`, `Urgent`, `Critical`), needed date, and direct phone contact.
 - **Donor Directory**: Register as a campus blood donor, track last donation dates, filter available donors by blood group (`A+`, `A-`, `B+`, `B-`, `O+`, `O-`, `AB+`, `AB-`), and mark emergency requests as fulfilled.
 
-### 8. Moderated Campus Marketplace (`marketplace.php`)
+### 8. Moderated Campus Marketplace
 - **Buy, Sell & Exchange**: List textbooks, electronics, stationery, and campus essentials with condition badges (`Brand New`, `Like New`, `Used`) and MIME-verified product images (`uploads/marketplace/`).
 - **Admin Pre-Approval & Reporting**: Newly listed items enter a `pending` state until approved by an administrator, with community reporting and instant seller contact via the internal messenger.
 
-### 9. Clubs & Societies Hub (`clubs.php`)
+### 9. Clubs & Societies Hub
 - **Campus Organizations Directory**: Filter clubs by category (`Technology`, `Cultural`, `Sports`, `Business`), view live member counts, and join or leave clubs via AJAX.
 - **Upcoming Club Events**: Sidebar calendar showcasing upcoming club workshops, tournaments, and campus events.
 
-### 10. Jobs & Alumni Network (`alumni.php`)
+### 10. Jobs & Alumni Network
 - **Career & Internship Board**: Browse and filter job postings (`Full-Time`, `Internship`, `Part-Time`, `Contract`) submitted by alumni and faculty, moderated via admin approval.
 - **Alumni & Mentorship Directory**: Graduating students can transition their account to an **Alumni** profile with company, designation, LinkedIn URL, and mentor availability badge.
 
-### 11. Dedicated Admin Portal (`admin/index.php`, `admin/admin_dashboard.php`)
+### 11. Dedicated Admin Portal
 - **System Overview & Analytics**: Real-time counters for total users, active blood requests, pending job posts, pending marketplace items, and reported posts.
 - **Course & Faculty Management**: Create, edit, and delete courses, set class schedules/rooms, and assign or unassign faculty instructors.
 - **Content Moderation Queues**: Approve or reject pending marketplace listings and job postings, review and remove reported posts, manage blood requests, create/delete campus clubs, manage user roles (`Student`, `Faculty`, `Admin`), and broadcast campus-wide announcements.
