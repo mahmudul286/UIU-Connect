@@ -8,8 +8,8 @@ From AI-powered OCR trimester routine synchronization and a categorized course m
 
 ### 1. Centralized Social Feed & Campus Announcements (`dashboard.php`)
 - **Rich Post Composer**: Publish text updates, upload photos/videos/documents (`jpg`, `png`, `gif`, `mp4`, `webm`, `pdf`, `doc`, `docx`, `zip`), and launch interactive multi-option **Campus Polls**.
-- **Granular Privacy Controls**: Set post visibility to `Public`, `Connections`, or `Only Me`, with full post editing and an auditable **Edit History** log (`post_edit_history`).
-- **Interactive Engagement**: Real-time AJAX likes, nested two-level comment threads with comment likes, post sharing, saved post collections (`saved_posts`), and community spam reporting.
+- **Granular Privacy Controls**: Set post visibility to `Public`, `Connections`, or `Only Me`, with full post editing and an auditable **Edit History** log.
+- **Interactive Engagement**: Real-time AJAX likes, nested two-level comment threads with comment likes, post sharing, saved post collections, and community spam reporting.
 - **Official Broadcasts**: Faculty and Administrators can publish highlighted **Campus Announcements** that automatically trigger real-time notifications across all users.
 - **Live Global Search**: Instant debounced search across campus users, public posts, and approved marketplace listings from the top navigation bar.
 
@@ -20,16 +20,16 @@ From AI-powered OCR trimester routine synchronization and a categorized course m
 
 ### 3. Course Materials Hub (`courses.php`)
 - **Categorized Study Repository**: Browse and search courses by code or title and filter materials across five tabs: **Mid Questions**, **Final Questions**, **CT Questions**, **Notes**, and **Books**.
-- **Direct Peer & Faculty Sharing**: Upload and download study files (`pdf`, `doc`, `docx`, `ppt`, `pptx`, `zip`, `rar`, `txt`, `jpg`, `png`) with one-click spam/fake reporting (`material_reports`).
+- **Direct Peer & Faculty Sharing**: Upload and download study files (`pdf`, `doc`, `docx`, `ppt`, `pptx`, `zip`, `rar`, `txt`, `jpg`, `png`) with one-click spam/fake reporting.
 
 ### 4. Faculty Counseling & Appointment System (`counseling.php`)
-- **Faculty Slot Management**: Faculty members define recurring weekly counseling hours by day of the week and start/end times (`faculty_slots`).
+- **Faculty Slot Management**: Faculty members define recurring weekly counseling hours by day of the week and start/end times.
 - **14-Day Dynamic Booking Engine**: Students select a faculty member, view dynamically generated available time slots for the upcoming 14 days, and submit appointment requests with their consultation reason.
 - **Approval Workflow & Alerts**: Faculty can **Approve** or **Reject** appointments with instant status notifications delivered to the student.
 
 ### 5. Skills, Developer Portfolio & Collaborator Finder (`skills.php`)
-- **Student Skill Tags**: Students curate technical and academic skills on their profile (`user_skills`).
-- **Project Showcase**: Publish software and hardware projects with cover images (`uploads/projects/`), tech stack tags, GitHub repository links, and live demo URLs, complete with community project likes (`project_likes`).
+- **Student Skill Tags**: Students curate technical and academic skills on their profile.
+- **Project Showcase**: Publish software and hardware projects with cover images (`uploads/projects/`), tech stack tags, GitHub repository links, and live demo URLs, complete with community project likes.
 - **Smart Collaborator Search**: Search for peers by skill tag or project tech stack and initiate direct messages with one click.
 
 ### 6. End-to-End Encrypted Messenger (`messages.php`)
@@ -42,15 +42,15 @@ From AI-powered OCR trimester routine synchronization and a categorized course m
 
 ### 8. Moderated Campus Marketplace (`marketplace.php`)
 - **Buy, Sell & Exchange**: List textbooks, electronics, stationery, and campus essentials with condition badges (`Brand New`, `Like New`, `Used`) and MIME-verified product images (`uploads/marketplace/`).
-- **Admin Pre-Approval & Reporting**: Newly listed items enter a `pending` state until approved by an administrator, with community reporting (`marketplace_reports`) and instant seller contact via the internal messenger.
+- **Admin Pre-Approval & Reporting**: Newly listed items enter a `pending` state until approved by an administrator, with community reporting and instant seller contact via the internal messenger.
 
 ### 9. Clubs & Societies Hub (`clubs.php`)
 - **Campus Organizations Directory**: Filter clubs by category (`Technology`, `Cultural`, `Sports`, `Business`), view live member counts, and join or leave clubs via AJAX.
-- **Upcoming Club Events**: Sidebar calendar showcasing upcoming club workshops, tournaments, and campus events (`club_events`).
+- **Upcoming Club Events**: Sidebar calendar showcasing upcoming club workshops, tournaments, and campus events.
 
 ### 10. Jobs & Alumni Network (`alumni.php`)
 - **Career & Internship Board**: Browse and filter job postings (`Full-Time`, `Internship`, `Part-Time`, `Contract`) submitted by alumni and faculty, moderated via admin approval.
-- **Alumni & Mentorship Directory**: Graduating students can transition their account to an **Alumni** profile (`alumni_profiles`) with company, designation, LinkedIn URL, and mentor availability badge.
+- **Alumni & Mentorship Directory**: Graduating students can transition their account to an **Alumni** profile with company, designation, LinkedIn URL, and mentor availability badge.
 
 ### 11. Dedicated Admin Portal (`admin/index.php`, `admin/admin_dashboard.php`)
 - **System Overview & Analytics**: Real-time counters for total users, active blood requests, pending job posts, pending marketplace items, and reported posts.
@@ -99,14 +99,14 @@ From AI-powered OCR trimester routine synchronization and a categorized course m
 
 ## Database Schema Overview
 
-The `uiu_connect` database consists of the following relational tables:
+All database tables and relationships are pre-configured in `database/uiu_connect.sql`:
 
 | Domain | Tables |
 | :--- | :--- |
 | **Users & Networking** | `users`, `connections`, `user_skills`, `alumni_profiles`, `notifications`, `messages` |
-| **Social Feed & Polls** | `posts`, `post_edit_history`, `likes`, `comments`, `comment_likes`, `poll_votes`, `saved_posts`, `post_reports` |
-| **Academics & Counseling** | `courses`, `enrollments`, `course_materials`, `material_reports`, `tasks`, `faculty_slots`, `appointments` |
-| **Campus Life & Career** | `clubs`, `club_members`, `club_events`, `projects`, `project_likes`, `jobs`, `marketplace`, `marketplace_reports` |
+| **Social Feed & Polls** | `posts`, `post_edit_history`, `likes`, `comments`, `comment_likes`, `poll_votes`, `saved_posts` |
+| **Academics & Counseling** | `courses`, `enrollments`, `course_materials`, `tasks`, `faculty_slots`, `appointments` |
+| **Campus Life & Career** | `clubs`, `club_members`, `club_events`, `projects`, `project_likes`, `jobs`, `marketplace` |
 | **Emergency Services** | `blood_donors`, `blood_requests`, `blood_bank` |
 
 ## Installation & Local Setup
@@ -124,89 +124,23 @@ Clone the repository into your web server's document root (such as `C:\xampp\htd
 git clone https://github.com/mahmudul286/UIU-Connect.git "UIU Connect"
 ```
 
-### Step 2: Create the Database & Import the SQL Dump
+### Step 2: Import the Database (`uiu_connect.sql`)
 1. Start **Apache** and **MySQL** from your XAMPP Control Panel.
 2. Open **phpMyAdmin** (`http://localhost/phpmyadmin`).
 3. Create a new database named `uiu_connect`.
-4. Select the `uiu_connect` database, click the **Import** tab, and upload `database/uiu_connect.sql`.
+4. Select the `uiu_connect` database, click the **Import** tab, choose `database/uiu_connect.sql` from the project folder, and click **Import**.
 
-### Step 3: Run the Schema Compatibility Patch
-Some newly added features (such as post privacy filters, job approval statuses, and content reporting tables) expect additional columns/tables beyond the base `uiu_connect.sql` dump. Run the following SQL query in the **SQL** tab of phpMyAdmin for `uiu_connect` to ensure all modules work out of the box:
+### Step 3: Verify Database Connection
+By default, `includes/db_connect.php` is configured for standard local XAMPP credentials (`host = 'localhost'`, `user = 'root'`, `pass = ''`, `dbname = 'uiu_connect'`). Update `includes/db_connect.php` only if your local MySQL server uses a custom username or password.
 
-```sql
--- 1. Add privacy column to posts table
-ALTER TABLE `posts`
-  ADD COLUMN IF NOT EXISTS `privacy` ENUM('Public','Connections','Only Me') DEFAULT 'Public';
+### Step 4: Ensure Upload Directories Are Writable
+Make sure your web server has write permissions for the `uploads/` directory and its subdirectories (`uploads/marketplace/`, `uploads/materials/`, `uploads/profiles/`, `uploads/projects/`, `uploads/tasks/`).
 
--- 2. Expand user roles to support Alumni upgrades
-ALTER TABLE `users`
-  MODIFY COLUMN `role` ENUM('Student','Faculty','Admin','Alumni') DEFAULT 'Student';
-
--- 3. Add admin approval status to jobs table
-ALTER TABLE `jobs`
-  ADD COLUMN IF NOT EXISTS `admin_approval_status` ENUM('pending','approved') DEFAULT 'approved';
-
--- 4. Add end_time to courses and file_path to tasks
-ALTER TABLE `courses`
-  ADD COLUMN IF NOT EXISTS `end_time` TIME DEFAULT NULL AFTER `start_time`;
-
-ALTER TABLE `tasks`
-  ADD COLUMN IF NOT EXISTS `file_path` VARCHAR(255) DEFAULT NULL;
-
--- 5. Create moderation report tables
-CREATE TABLE IF NOT EXISTS `post_reports` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `post_id` INT NOT NULL,
-  `user_id` INT NOT NULL,
-  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY `unique_post_report` (`post_id`, `user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS `material_reports` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `material_id` INT NOT NULL,
-  `user_id` INT NOT NULL,
-  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY `unique_material_report` (`material_id`, `user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS `marketplace_reports` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `item_id` INT NOT NULL,
-  `user_id` INT NOT NULL,
-  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY `unique_marketplace_report` (`item_id`, `user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-```
-
-### Step 4: Configure Database Credentials
-Verify your database connection settings in `includes/db_connect.php`:
-
-```php
-<?php
-session_start();
-$host = 'localhost';
-$user = 'root';
-$pass = ''; 
-$dbname = 'uiu_connect';
-```
-
-### Step 5: Ensure Upload Directories Are Writable
-Make sure PHP has write permissions for the `uploads/` directory and its subdirectories (`uploads/marketplace/`, `uploads/materials/`, `uploads/profiles/`, `uploads/projects/`, `uploads/tasks/`).
-
-### Step 6: Access the Application
+### Step 5: Run the Application
 - **Main Campus Portal (Students, Faculty, Alumni)**:
   `http://localhost/UIU%20Connect/`
 - **Admin Portal**:
   `http://localhost/UIU%20Connect/admin/`
-
-## Creating an Admin Account
-
-New accounts registered via `register.php` can select either the **Student** or **Faculty** role. To promote an existing registered account to **Admin** so you can log in at `/admin/index.php`, run this query in phpMyAdmin:
-
-```sql
-UPDATE `users` SET `role` = 'Admin' WHERE `email` = 'your_email@uiu.ac.bd';
-```
 
 ## Security & Architecture Highlights
 
