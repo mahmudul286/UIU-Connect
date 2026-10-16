@@ -8,6 +8,7 @@ $user_id = $_SESSION['user_id'];
 $user_role = $_SESSION['role'];
 $current_page = 'counseling.php';
 
+// Auto-update ENUM to support appointment notifications
 $conn->query("ALTER TABLE notifications MODIFY COLUMN type ENUM('like','comment','connection','announcement','appointment') NOT NULL");
 
 // Faculty: Add Slot
@@ -39,7 +40,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ajax_action'])) {
             $row = $check->fetch_assoc();
             $student_id = $row['student_id'];
 
+            // Update status
             $conn->query("UPDATE appointments SET status = '$new_status' WHERE id = $appt_id");
+            
+            // Send Notification to the Student
             $conn->query("INSERT INTO notifications (user_id, sender_id, type, reference_id) VALUES ($student_id, $user_id, 'appointment', $appt_id)");
 
             echo json_encode(['status' => 'success']);
@@ -282,18 +286,22 @@ include 'includes/sidebar.php';
                 $fac_res = $conn->query($fac_sql);
                 if ($fac_res && $fac_res->num_rows > 0) {
                     while ($f = $fac_res->fetch_assoc()) {
-                        // FIX: 100% Responsive, Beautiful UI. Prevents horizontal scroll, truncates large names.
-                        echo '<div class="faculty-card faculty-item" style="border: 1px solid var(--border-light); padding: 16px; border-radius: 12px; margin-bottom: 12px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: 0.2s;">
+                        // FIX: Explicitly separated rows and ensured buttons stretch 50/50 without breaking horizontally.
+                        echo '<div class="faculty-item" style="border: 1px solid var(--border-light); padding: 15px; border-radius: 10px; margin-bottom: 12px; background: #fff;">
                                 <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 15px;">
-                                    <div style="width: 42px; height: 42px; background: #F0F9FF; color: #0284C7; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; flex-shrink:0;">'.strtoupper($f['full_name'][0]).'</div>
-                                    <div style="overflow:hidden; flex:1; min-width:0;">
-                                        <strong class="fac-name" style="font-size:15px; color:var(--text-main); display:block; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">'.htmlspecialchars($f['full_name']).'</strong>
+                                    <div style="background:var(--bg-light); border:1px solid var(--border-light); color:var(--text-main); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; flex-shrink:0;">'.strtoupper($f['full_name'][0]).'</div>
+                                    <div style="flex: 1; min-width: 0;">
+                                        <strong class="fac-name" style="font-size:14px; color:var(--text-main); display:block; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">'.htmlspecialchars($f['full_name']).'</strong>
                                         <span style="font-size:12px; color:var(--text-muted);"><i class="fa-solid fa-briefcase" style="margin-right:4px;"></i>'.htmlspecialchars($f['department']).'</span>
                                     </div>
                                 </div>
                                 <div style="display: flex; gap: 10px;">
-                                    <button class="btn-primary" style="flex:1; padding: 8px; font-size: 12px; background: #0284C7; border: none; border-radius: 6px; display:flex; align-items:center; justify-content:center; gap:5px;" onclick="selectFaculty('.$f['id'].')" title="Book Counseling"><i class="fa-solid fa-calendar-check"></i> Book</button>
-                                    <a href="profile.php?id='.$f['id'].'" class="btn-outline" style="flex:1; padding: 8px; font-size: 12px; border-radius: 6px; display:flex; align-items:center; justify-content:center; gap:5px; text-decoration:none; color:var(--text-main); border-color:var(--border-light);" title="View Faculty Profile"><i class="fa-solid fa-user"></i> Profile</a>
+                                    <button class="btn-primary" style="flex: 1; padding: 8px 0; font-size: 12px; background: #0284C7; border: none; border-radius: 6px; cursor: pointer; display:flex; align-items:center; justify-content:center; gap:5px;" onclick="selectFaculty('.$f['id'].')" title="Book Counseling">
+                                        <i class="fa-solid fa-calendar-check"></i> Book
+                                    </button>
+                                    <a href="profile.php?id='.$f['id'].'" class="btn-outline" style="flex: 1; padding: 8px 0; font-size: 12px; border-radius: 6px; display:flex; align-items:center; justify-content:center; gap:5px; text-decoration:none; color:var(--text-main); border-color:var(--border-light); box-sizing:border-box;" title="View Faculty Profile">
+                                        <i class="fa-solid fa-user"></i> Profile
+                                    </a>
                                 </div>
                               </div>';
                     }
@@ -345,7 +353,7 @@ include 'includes/sidebar.php';
             </div>
             
             <label style="font-size: 13px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; display: block;">Reason for Appointment *</label>
-            <textarea name="reason" class="poll-input" rows="3" placeholder="E.g. Discussion regarding FYDP, Course Advising, etc." required></textarea>
+            <textarea name="reason" class="poll-input" rows="3" placeholder="E.g. Discussion regarding FYP, Course Advising, etc." required></textarea>
 
             <button type="submit" id="submitRequestBtn" class="btn-primary" style="width:100%; margin-top: 10px; padding: 12px; font-size: 14px; background: #0284C7; border: none;" disabled>Confirm Booking</button>
         </form>

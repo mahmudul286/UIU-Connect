@@ -839,7 +839,7 @@ $active_blood_reqs = $conn->query("SELECT COUNT(id) as c FROM blood_requests WHE
         <!-- MARKETPLACE SECTION -->
         <div id="sec-marketplace" class="admin-section">
             <div class="section-header">
-                <h3><i class="fa-solid fa-store" style="color: #D97706;"></i> Marketplace Approvals</h3>
+                <h3><i class="fa-solid fa-store" style="color: #D97706;"></i> Marketplace Management</h3>
             </div>
             <div style="overflow-x: auto;">
                 <table>

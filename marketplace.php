@@ -166,7 +166,7 @@ include 'includes/sidebar.php';
                         <?php if ($row['seller_id'] != $user_id && !$is_pending): ?>
                             <div style="display: flex; gap: 10px; margin-top: 12px;">
                                 <a href="messages.php?user=<?php echo $row['seller_id']; ?>" class="btn-primary" style="flex: 1; text-align: center; text-decoration: none; padding: 8px; font-size: 13px;">
-                                    <i class="fa-regular fa-comment-dots"></i> Message Seller
+                                    Message Seller
                                 </a>
                                 <button class="btn-outline" style="padding: 8px 12px; color: #EF4444; border-color: #FCA5A5;" onclick="reportItem(<?php echo $row['id']; ?>)" title="Report Fake/Scam">
                                     <i class="fa-solid fa-flag"></i>
